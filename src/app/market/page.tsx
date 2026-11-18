@@ -3,7 +3,6 @@
 import { useState, useEffect, useCallback } from 'react';
 import Link from 'next/link';
 import { Navbar } from '@/components/Navbar';
-import { Footer } from '@/components/Footer';
 import { MarketMap } from '@/components/MarketMap';
 import { ListingModal } from '@/components/ListingModal';
 import { PUNJAB_DISTRICTS } from '@/lib/marketDict';
@@ -325,9 +324,6 @@ export default function MarketBrowsePage() {
         onRoleChange={setUserRole}
         onOfferSubmitted={fetchMarketListings}
       />
-
-      {/* Footer */}
-      <Footer />
     </div>
   );
 }
