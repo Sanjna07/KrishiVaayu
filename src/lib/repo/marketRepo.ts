@@ -2,6 +2,8 @@ import fs from 'fs';
 import path from 'path';
 import type { Listing, Offer, ListingStatus, StrawForm } from '@/types/market';
 import { initialDemoListings, initialDemoOffers } from './seedData';
+import { isMongoConfigured } from '@/lib/db/mongodb';
+import { MongoMarketRepository } from './mongoMarketRepo';
 
 export interface ListingFilter {
   district?: string;
@@ -242,14 +244,149 @@ class InMemoryMarketRepository implements IMarketRepository {
   }
 }
 
+class HybridMarketRepository implements IMarketRepository {
+  private inMemoryRepo: InMemoryMarketRepository;
+  private mongoRepo: MongoMarketRepository | null = null;
+
+  constructor() {
+    this.inMemoryRepo = new InMemoryMarketRepository();
+  }
+
+  private getActiveRepo(): IMarketRepository {
+    if (isMongoConfigured()) {
+      if (!this.mongoRepo) {
+        this.mongoRepo = new MongoMarketRepository();
+      }
+      return this.mongoRepo;
+    }
+    return this.inMemoryRepo;
+  }
+
+  async createListing(listing: Listing): Promise<Listing> {
+    try {
+      return await this.getActiveRepo().createListing(listing);
+    } catch (err) {
+      if (this.mongoRepo) {
+        console.warn('MongoDB operation failed, falling back to local memory repo:', err);
+        return this.inMemoryRepo.createListing(listing);
+      }
+      throw err;
+    }
+  }
+
+  async getListingById(id: string): Promise<Listing | null> {
+    try {
+      return await this.getActiveRepo().getListingById(id);
+    } catch (err) {
+      if (this.mongoRepo) {
+        console.warn('MongoDB operation failed, falling back to local memory repo:', err);
+        return this.inMemoryRepo.getListingById(id);
+      }
+      throw err;
+    }
+  }
+
+  async getListingByTokenHash(tokenHash: string): Promise<Listing | null> {
+    try {
+      return await this.getActiveRepo().getListingByTokenHash(tokenHash);
+    } catch (err) {
+      if (this.mongoRepo) {
+        console.warn('MongoDB operation failed, falling back to local memory repo:', err);
+        return this.inMemoryRepo.getListingByTokenHash(tokenHash);
+      }
+      throw err;
+    }
+  }
+
+  async listListings(filter?: ListingFilter): Promise<Listing[]> {
+    try {
+      return await this.getActiveRepo().listListings(filter);
+    } catch (err) {
+      if (this.mongoRepo) {
+        console.warn('MongoDB operation failed, falling back to local memory repo:', err);
+        return this.inMemoryRepo.listListings(filter);
+      }
+      throw err;
+    }
+  }
+
+  async updateListing(id: string, updates: Partial<Listing>): Promise<Listing> {
+    try {
+      return await this.getActiveRepo().updateListing(id, updates);
+    } catch (err) {
+      if (this.mongoRepo) {
+        console.warn('MongoDB operation failed, falling back to local memory repo:', err);
+        return this.inMemoryRepo.updateListing(id, updates);
+      }
+      throw err;
+    }
+  }
+
+  async createOffer(offer: Offer): Promise<Offer> {
+    try {
+      return await this.getActiveRepo().createOffer(offer);
+    } catch (err) {
+      if (this.mongoRepo) {
+        console.warn('MongoDB operation failed, falling back to local memory repo:', err);
+        return this.inMemoryRepo.createOffer(offer);
+      }
+      throw err;
+    }
+  }
+
+  async getOffersByListingId(listingId: string): Promise<Offer[]> {
+    try {
+      return await this.getActiveRepo().getOffersByListingId(listingId);
+    } catch (err) {
+      if (this.mongoRepo) {
+        console.warn('MongoDB operation failed, falling back to local memory repo:', err);
+        return this.inMemoryRepo.getOffersByListingId(listingId);
+      }
+      throw err;
+    }
+  }
+
+  async getOfferById(id: string): Promise<Offer | null> {
+    try {
+      return await this.getActiveRepo().getOfferById(id);
+    } catch (err) {
+      if (this.mongoRepo) {
+        console.warn('MongoDB operation failed, falling back to local memory repo:', err);
+        return this.inMemoryRepo.getOfferById(id);
+      }
+      throw err;
+    }
+  }
+
+  async updateOffer(id: string, updates: Partial<Offer>): Promise<Offer> {
+    try {
+      return await this.getActiveRepo().updateOffer(id, updates);
+    } catch (err) {
+      if (this.mongoRepo) {
+        console.warn('MongoDB operation failed, falling back to local memory repo:', err);
+        return this.inMemoryRepo.updateOffer(id, updates);
+      }
+      throw err;
+    }
+  }
+
+  async seed(listings: Listing[], offers: Offer[], replace?: boolean): Promise<{ listingCount: number; offerCount: number }> {
+    return this.getActiveRepo().seed(listings, offers, replace);
+  }
+
+  async clear(): Promise<void> {
+    return this.getActiveRepo().clear();
+  }
+}
+
 // Global singleton to persist in memory across Next.js API requests
 const globalForMarket = globalThis as unknown as {
-  marketRepo: InMemoryMarketRepository | undefined;
+  marketRepo: IMarketRepository | undefined;
 };
 
 export const marketRepo: IMarketRepository =
-  globalForMarket.marketRepo ?? new InMemoryMarketRepository();
+  globalForMarket.marketRepo ?? new HybridMarketRepository();
 
 if (process.env.NODE_ENV !== 'production') {
-  globalForMarket.marketRepo = marketRepo as InMemoryMarketRepository;
+  globalForMarket.marketRepo = marketRepo;
 }
