@@ -13,17 +13,6 @@ import {
   Check,
 } from 'lucide-react';
 
-interface NearestBuyer {
-  id: string;
-  name: string;
-  type: string;
-  district: string;
-  approxDistanceKm: number;
-  isOperational: boolean;
-  priceQuote?: string;
-  notes?: string;
-}
-
 interface ListingModalProps {
   listing: PublicListing | null;
   isOpen: boolean;
@@ -71,9 +60,8 @@ export function ListingModal({
   userRole,
   onRoleChange,
 }: ListingModalProps) {
-  const [activeTab, setActiveTab] = useState<'details' | 'offers' | 'alternatives' | 'make_offer'>('details');
+  const [activeTab, setActiveTab] = useState<'details' | 'offers' | 'make_offer'>('details');
   const [offers, setOffers] = useState<Offer[]>([]);
-  const [nearestBuyers, setNearestBuyers] = useState<NearestBuyer[]>([]);
   const [loadingOffers, setLoadingOffers] = useState(false);
 
   // Offer form state
@@ -92,15 +80,10 @@ export function ListingModal({
 
     const loadData = async () => {
       try {
-        const [lRes, bRes] = await Promise.all([
-          fetch(`/api/market/listings/${listing.id}`),
-          fetch(`/api/market/nearest-buyers?district=${encodeURIComponent(listing.district)}`)
-        ]);
+        const lRes = await fetch(`/api/market/listings/${listing.id}`);
         if (ignore) return;
         const lJson = await lRes.json();
-        const bJson = await bRes.json();
         if (lJson.offers) setOffers(lJson.offers);
-        if (bJson.buyers) setNearestBuyers(bJson.buyers);
         setLoadingOffers(false);
       } catch {
         if (!ignore) setLoadingOffers(false);
@@ -204,17 +187,6 @@ export function ListingModal({
             <span className="px-1.5 py-0.2 rounded-full text-[10px] bg-slate-100 text-[#5B6675]">
               {offers.length}
             </span>
-          </button>
-          <button
-            type="button"
-            onClick={() => setActiveTab('alternatives')}
-            className={`py-2 px-3 border-b-2 transition-colors ${
-              activeTab === 'alternatives'
-                ? 'border-[#1F3A5F] text-[#1F3A5F]'
-                : 'border-transparent text-[#5B6675] hover:text-[#1B2430]'
-            }`}
-          >
-            Clean Off-Takers
           </button>
           <button
             type="button"
@@ -342,32 +314,7 @@ export function ListingModal({
           </div>
         )}
 
-        {/* Tab 3: Clean Off-Takers */}
-        {activeTab === 'alternatives' && (
-          <div className="space-y-2 text-xs">
-            <p className="text-[11px] text-[#5B6675] mb-2">
-              Clean residue off-takers near {listing.district} sourced from state registries:
-            </p>
-            {nearestBuyers.map((nb) => (
-              <div key={nb.id} className="p-3 bg-white border border-[#D9DEE5] rounded-lg space-y-1">
-                <div className="flex items-center justify-between">
-                  <span className="font-bold text-[#1F3A5F]">{nb.name}</span>
-                  <span className="text-[11px] font-semibold text-[#5B6675] bg-slate-100 px-2 py-0.5 rounded">
-                    approx. {nb.approxDistanceKm} km
-                  </span>
-                </div>
-                <p className="text-[11px] text-[#5B6675]">{nb.type} · {nb.district}</p>
-                {nb.priceQuote && (
-                  <p className="text-emerald-800 font-semibold text-[11px] pt-1 border-t border-[#F1F4F9]">
-                    {nb.priceQuote}
-                  </p>
-                )}
-              </div>
-            ))}
-          </div>
-        )}
-
-        {/* Tab 4: Make an Offer */}
+        {/* Tab 3: Make an Offer */}
         {activeTab === 'make_offer' && (
           <div className="space-y-3 text-xs">
             {offerSuccess ? (

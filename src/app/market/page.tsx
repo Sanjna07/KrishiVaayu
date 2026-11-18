@@ -3,7 +3,6 @@
 import { useState, useEffect, useCallback } from 'react';
 import Link from 'next/link';
 import { Navbar } from '@/components/Navbar';
-import { DemoNotice } from '@/components/DemoNotice';
 import { Footer } from '@/components/Footer';
 import { MarketMap } from '@/components/MarketMap';
 import { ListingModal } from '@/components/ListingModal';
@@ -125,7 +124,6 @@ export default function MarketBrowsePage() {
   return (
     <div className="min-h-screen bg-[#F5F7FA] text-[#1B2430] flex flex-col">
       <Navbar />
-      <DemoNotice />
 
       {/* Main Container */}
       <main className="flex-1 max-w-7xl w-full mx-auto p-4 sm:p-6 lg:p-8 flex flex-col gap-5">

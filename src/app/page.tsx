@@ -4,7 +4,6 @@ import { useEffect, useState, useMemo, useCallback } from 'react';
 import { Navbar } from '@/components/Navbar';
 import { MainMap } from '@/components/MainMap';
 import { DetailDrawer } from '@/components/DetailDrawer';
-import { DemoNotice } from '@/components/DemoNotice';
 import { Footer } from '@/components/Footer';
 import type { MatchesApiResponse, DistrictSummary } from '@/types';
 import { getRiskBadgeClasses } from '@/lib/theme';
@@ -110,7 +109,6 @@ export default function HomePage() {
   return (
     <div className="flex flex-col min-h-screen bg-[#F5F7FA] text-[#1B2430]">
       <Navbar />
-      <DemoNotice allowDismiss />
 
       {/* Headline Metric Row */}
       <section className="bg-white border-b border-[#D9DEE5] px-4 sm:px-6 lg:px-8 py-3.5">
