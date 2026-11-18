@@ -34,6 +34,8 @@ export interface Listing {
   status: ListingStatus;
   isDemo: boolean;
   acceptedOfferId?: string;
+  isFlagged?: boolean;            // Automatically flagged when verified report threshold (>3) is exceeded
+  reportCount?: number;           // Total count of reports submitted against this listing
   createdAt: string;              // ISO timestamp
   updatedAt: string;              // ISO timestamp
 }
@@ -94,4 +96,38 @@ export interface CreateOfferInput {
   proposedPickupDate: string;
   shortNote?: string;
   isDemo?: boolean;
+}
+
+export type ReporterType = 'farmer' | 'buyer';
+export type ReportTargetType = 'farmer' | 'buyer';
+
+export type ReportReason =
+  | 'no_show_pickup'
+  | 'incorrect_quantity_quality'
+  | 'payment_issue'
+  | 'unresponsive_contact'
+  | 'fake_listing_or_bid'
+  | 'inappropriate_behavior'
+  | 'other';
+
+export interface MarketReport {
+  id: string;
+  reporterType: ReporterType;
+  reporterId: string;
+  targetType: ReportTargetType;
+  targetId: string;
+  targetName?: string;
+  reason: ReportReason;
+  notes?: string;
+  createdAt: string;
+}
+
+export interface CreateReportInput {
+  reporterType: ReporterType;
+  reporterId: string;
+  targetType: ReportTargetType;
+  targetId: string;
+  targetName?: string;
+  reason: ReportReason;
+  notes?: string;
 }

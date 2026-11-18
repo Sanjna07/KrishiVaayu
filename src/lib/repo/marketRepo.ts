@@ -1,6 +1,6 @@
 import fs from 'fs';
 import path from 'path';
-import type { Listing, Offer, ListingStatus, StrawForm } from '@/types/market';
+import type { Listing, Offer, ListingStatus, StrawForm, MarketReport, CreateReportInput } from '@/types/market';
 import { initialDemoListings, initialDemoOffers } from './seedData';
 import { isMongoConfigured } from '@/lib/db/mongodb';
 import { MongoMarketRepository } from './mongoMarketRepo';
@@ -24,6 +24,9 @@ export interface IMarketRepository {
   getOfferById(id: string): Promise<Offer | null>;
   updateOffer(id: string, updates: Partial<Offer>): Promise<Offer>;
 
+  createReport(input: CreateReportInput): Promise<{ report: MarketReport; flagged: boolean; duplicate: boolean }>;
+  getReportsByTargetId(targetId: string): Promise<MarketReport[]>;
+
   seed(listings: Listing[], offers: Offer[], replace?: boolean): Promise<{ listingCount: number; offerCount: number }>;
   clear(): Promise<void>;
 }
@@ -31,6 +34,7 @@ export interface IMarketRepository {
 class InMemoryMarketRepository implements IMarketRepository {
   private listings = new Map<string, Listing>();
   private offers = new Map<string, Offer>();
+  private reports = new Map<string, MarketReport>();
   private initialized = false;
 
   constructor() {
@@ -49,8 +53,12 @@ class InMemoryMarketRepository implements IMarketRepository {
         if (Array.isArray(data.listings) && Array.isArray(data.offers)) {
           this.listings.clear();
           this.offers.clear();
+          this.reports.clear();
           for (const l of data.listings) this.listings.set(l.id, l);
           for (const o of data.offers) this.offers.set(o.id, o);
+          if (Array.isArray(data.reports)) {
+            for (const r of data.reports) this.reports.set(r.id, r);
+          }
           this.initialized = true;
           return;
         }
@@ -93,6 +101,7 @@ class InMemoryMarketRepository implements IMarketRepository {
       const data = {
         listings: Array.from(this.listings.values()),
         offers: Array.from(this.offers.values()),
+        reports: Array.from(this.reports.values()),
       };
       fs.writeFileSync(storagePath, JSON.stringify(data, null, 2), 'utf-8');
     } catch {
@@ -236,9 +245,64 @@ class InMemoryMarketRepository implements IMarketRepository {
     };
   }
 
+  async createReport(input: CreateReportInput): Promise<{ report: MarketReport; flagged: boolean; duplicate: boolean }> {
+    this.ensureInitialized();
+
+    // Prevent duplicate reports: check if same reporter has already reported this target
+    for (const existing of this.reports.values()) {
+      if (existing.reporterId === input.reporterId && existing.targetId === input.targetId) {
+        return { report: { ...existing }, flagged: false, duplicate: true };
+      }
+    }
+
+    const reportId = `rep_${Date.now()}_${Math.random().toString(36).substring(2, 7)}`;
+    const newReport: MarketReport = {
+      id: reportId,
+      reporterType: input.reporterType,
+      reporterId: input.reporterId,
+      targetType: input.targetType,
+      targetId: input.targetId,
+      targetName: input.targetName,
+      reason: input.reason,
+      notes: input.notes?.trim().slice(0, 500),
+      createdAt: new Date().toISOString(),
+    };
+
+    this.reports.set(reportId, newReport);
+
+    // Count reports for targetId
+    const targetReports = Array.from(this.reports.values()).filter((r) => r.targetId === input.targetId);
+    const count = targetReports.length;
+    let flagged = false;
+
+    // Rule: More than 3 valid reports (> 3) triggers automatic flagging for verification
+    if (count > 3) {
+      flagged = true;
+      if (input.targetType === 'farmer') {
+        const listing = this.listings.get(input.targetId);
+        if (listing) {
+          listing.isFlagged = true;
+          listing.reportCount = count;
+          this.listings.set(listing.id, { ...listing });
+        }
+      }
+    }
+
+    this.saveToStorage();
+    return { report: { ...newReport }, flagged, duplicate: false };
+  }
+
+  async getReportsByTargetId(targetId: string): Promise<MarketReport[]> {
+    this.ensureInitialized();
+    return Array.from(this.reports.values())
+      .filter((r) => r.targetId === targetId)
+      .map((r) => ({ ...r }));
+  }
+
   async clear(): Promise<void> {
     this.listings.clear();
     this.offers.clear();
+    this.reports.clear();
     this.initialized = true;
     this.saveToStorage();
   }
@@ -365,6 +429,30 @@ class HybridMarketRepository implements IMarketRepository {
       if (this.mongoRepo) {
         console.warn('MongoDB operation failed, falling back to local memory repo:', err);
         return this.inMemoryRepo.updateOffer(id, updates);
+      }
+      throw err;
+    }
+  }
+
+  async createReport(input: CreateReportInput): Promise<{ report: MarketReport; flagged: boolean; duplicate: boolean }> {
+    try {
+      return await this.getActiveRepo().createReport(input);
+    } catch (err) {
+      if (this.mongoRepo) {
+        console.warn('MongoDB operation failed, falling back to local memory repo:', err);
+        return this.inMemoryRepo.createReport(input);
+      }
+      throw err;
+    }
+  }
+
+  async getReportsByTargetId(targetId: string): Promise<MarketReport[]> {
+    try {
+      return await this.getActiveRepo().getReportsByTargetId(targetId);
+    } catch (err) {
+      if (this.mongoRepo) {
+        console.warn('MongoDB operation failed, falling back to local memory repo:', err);
+        return this.inMemoryRepo.getReportsByTargetId(targetId);
       }
       throw err;
     }

@@ -15,6 +15,8 @@ import {
   Share2,
   Pencil,
   X,
+  Flag,
+  AlertTriangle,
 } from 'lucide-react';
 
 interface FarmerDashboardClientProps {
@@ -127,6 +129,62 @@ export default function FarmerDashboardClient({ token }: FarmerDashboardClientPr
       setEditError(err instanceof Error ? err.message : 'Failed to update listing');
     } finally {
       setEditSaving(false);
+    }
+  };
+
+  // Report Buyer State & Handlers
+  const [reportOfferTarget, setReportOfferTarget] = useState<Offer | null>(null);
+  const [reportReason, setReportReason] = useState<string>('no_show_pickup');
+  const [reportNotes, setReportNotes] = useState<string>('');
+  const [reportSubmitting, setReportSubmitting] = useState(false);
+  const [reportModalError, setReportModalError] = useState<string | null>(null);
+
+  const openReportBuyer = (offer: Offer) => {
+    setReportOfferTarget(offer);
+    setReportReason('no_show_pickup');
+    setReportNotes('');
+    setReportModalError(null);
+  };
+
+  const closeReportBuyer = () => {
+    if (reportSubmitting) return;
+    setReportOfferTarget(null);
+    setReportModalError(null);
+  };
+
+  const handleSubmitBuyerReport = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!listing || !reportOfferTarget) return;
+
+    setReportSubmitting(true);
+    setReportModalError(null);
+
+    try {
+      const res = await fetch('/api/market/reports', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          reporterType: 'farmer',
+          reporterId: listing.id,
+          targetType: 'buyer',
+          targetId: reportOfferTarget.buyerId,
+          targetName: reportOfferTarget.buyerName,
+          reason: reportReason,
+          notes: reportNotes.trim() || undefined,
+        }),
+      });
+
+      const data = await res.json();
+      if (!res.ok) {
+        throw new Error(data.error || 'Failed to submit report');
+      }
+
+      setActionSuccess(data.message || '✓ Report submitted successfully.');
+      closeReportBuyer();
+    } catch (err: unknown) {
+      setReportModalError(err instanceof Error ? err.message : 'Error submitting report');
+    } finally {
+      setReportSubmitting(false);
     }
   };
 
@@ -584,19 +642,41 @@ export default function FarmerDashboardClient({ token }: FarmerDashboardClientPr
                           </span>
                         </div>
 
-                        <a
-                          href={`tel:${offer.buyerContact || '9811100000'}`}
-                          className="px-3 py-1.5 bg-[#2E7D32] hover:bg-[#236327] text-white text-xs font-semibold rounded-md flex items-center gap-1.5 transition-colors shadow-xs"
-                        >
-                          <Phone className="w-3.5 h-3.5" />
-                          <span>Call Buyer</span>
-                        </a>
+                        <div className="flex items-center gap-2">
+                          <a
+                            href={`tel:${offer.buyerContact || '9811100000'}`}
+                            className="px-3 py-1.5 bg-[#2E7D32] hover:bg-[#236327] text-white text-xs font-semibold rounded-md flex items-center gap-1.5 transition-colors shadow-xs"
+                          >
+                            <Phone className="w-3.5 h-3.5" />
+                            <span>Call Buyer</span>
+                          </a>
+                          <button
+                            type="button"
+                            onClick={() => openReportBuyer(offer)}
+                            className="px-2.5 py-1.5 bg-white hover:bg-red-50 text-[#C62828] border border-red-200 text-xs font-medium rounded-md flex items-center gap-1 transition-colors"
+                            title="Report buyer issue or no-show"
+                          >
+                            <Flag className="w-3 h-3" />
+                            <span>Report</span>
+                          </button>
+                        </div>
                       </div>
                     ) : (
                       <div className="flex items-center justify-between pt-2 border-t border-[#D9DEE5]">
-                        <span className="text-xs text-[#5B6675] capitalize">
-                          Status: {offer.status}
-                        </span>
+                        <div className="flex items-center gap-3">
+                          <span className="text-xs text-[#5B6675] capitalize">
+                            Status: {offer.status}
+                          </span>
+                          <button
+                            type="button"
+                            onClick={() => openReportBuyer(offer)}
+                            className="text-[11px] text-[#5B6675] hover:text-[#C62828] flex items-center gap-1 transition-colors"
+                            title="Report issue with this buyer"
+                          >
+                            <Flag className="w-3 h-3" />
+                            <span>Report</span>
+                          </button>
+                        </div>
 
                         {offer.status === 'pending' && listing.status === 'offered' && (
                           <div className="flex items-center gap-2">
@@ -830,6 +910,103 @@ export default function FarmerDashboardClient({ token }: FarmerDashboardClientPr
                       <span>Save Changes</span>
                     </>
                   )}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+      {/* Report Buyer Modal */}
+      {reportOfferTarget && (
+        <div
+          className="fixed inset-0 z-50 bg-slate-900/50 backdrop-blur-xs flex items-center justify-center p-4 overflow-y-auto"
+          role="dialog"
+          aria-modal="true"
+        >
+          <div className="bg-white border border-[#D9DEE5] rounded-xl shadow-xl max-w-md w-full overflow-hidden animate-in fade-in zoom-in-95 duration-150">
+            <div className="px-5 py-4 border-b border-[#D9DEE5] bg-[#F5F7FA] flex items-center justify-between">
+              <div>
+                <h2 className="text-base font-bold text-[#1F3A5F] flex items-center gap-2">
+                  <Flag className="w-4 h-4 text-[#C62828]" />
+                  <span>Report Buyer</span>
+                </h2>
+                <p className="text-xs text-[#5B6675] mt-0.5">
+                  Reporting: <strong className="text-[#1B2430]">{reportOfferTarget.buyerName}</strong>
+                </p>
+              </div>
+              <button
+                type="button"
+                onClick={closeReportBuyer}
+                disabled={reportSubmitting}
+                className="p-1.5 text-[#5B6675] hover:text-[#1B2430] hover:bg-slate-200/60 rounded-md transition-colors"
+                title="Close"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            <form onSubmit={handleSubmitBuyerReport} className="p-5 space-y-4 text-xs">
+              {reportModalError && (
+                <div className="p-3 bg-red-50 border border-red-200 rounded-lg text-red-900 flex items-start gap-2">
+                  <AlertCircle className="w-4 h-4 text-[#C62828] shrink-0 mt-0.5" />
+                  <span>{reportModalError}</span>
+                </div>
+              )}
+
+              <div>
+                <label className="block text-[#1B2430] font-semibold mb-1">
+                  Reason for Report <span className="text-red-500">*</span>
+                </label>
+                <select
+                  value={reportReason}
+                  onChange={(e) => setReportReason(e.target.value)}
+                  className="w-full px-3 py-2 border border-[#D9DEE5] rounded-md text-xs text-[#1B2430] bg-white focus:outline-none focus:ring-1 focus:ring-[#2E7D32] focus:border-[#2E7D32]"
+                >
+                  <option value="no_show_pickup">No-show: Buyer did not arrive for scheduled pickup</option>
+                  <option value="payment_issue">Payment Dispute: Did not pay agreed rate or defaulted</option>
+                  <option value="unresponsive_contact">Unresponsive: Contact number unreachable</option>
+                  <option value="fake_listing_or_bid">Fraudulent / Bogus bid</option>
+                  <option value="inappropriate_behavior">Unprofessional or abusive behavior</option>
+                  <option value="other">Other issue</option>
+                </select>
+              </div>
+
+              <div>
+                <label className="block text-[#1B2430] font-semibold mb-1">
+                  Additional Details <span className="text-[#5B6675] font-normal">(Optional, max 500 characters)</span>
+                </label>
+                <textarea
+                  rows={3}
+                  maxLength={500}
+                  value={reportNotes}
+                  onChange={(e) => setReportNotes(e.target.value)}
+                  placeholder="Describe what occurred with date and time..."
+                  className="w-full px-3 py-2 border border-[#D9DEE5] rounded-md text-xs text-[#1B2430] bg-white focus:outline-none focus:ring-1 focus:ring-[#2E7D32] focus:border-[#2E7D32]"
+                />
+              </div>
+
+              <div className="p-3 bg-amber-50 border border-amber-200 rounded-lg text-amber-900 flex items-start gap-2 text-[11px]">
+                <AlertTriangle className="w-4 h-4 text-amber-700 shrink-0 mt-0.5" />
+                <span>
+                  Accounts receiving more than 3 valid reports are automatically flagged for regional administrative verification and blacklisting.
+                </span>
+              </div>
+
+              <div className="pt-3 border-t border-[#D9DEE5] flex items-center justify-end gap-2">
+                <button
+                  type="button"
+                  disabled={reportSubmitting}
+                  onClick={closeReportBuyer}
+                  className="px-4 py-2 bg-white hover:bg-slate-50 border border-[#D9DEE5] text-[#5B6675] hover:text-[#1B2430] font-medium rounded-md transition-colors"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  disabled={reportSubmitting}
+                  className="px-4 py-2 bg-[#C62828] hover:bg-[#B71C1C] disabled:opacity-50 text-white font-semibold rounded-md shadow-xs flex items-center gap-1.5 transition-colors"
+                >
+                  {reportSubmitting ? 'Submitting...' : 'Submit Report'}
                 </button>
               </div>
             </form>

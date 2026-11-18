@@ -1,5 +1,5 @@
 import { getMongoDb } from '@/lib/db/mongodb';
-import type { Listing, Offer } from '@/types/market';
+import type { Listing, Offer, MarketReport, CreateReportInput } from '@/types/market';
 import type { IMarketRepository, ListingFilter } from './marketRepo';
 
 export class MongoMarketRepository implements IMarketRepository {
@@ -7,7 +7,8 @@ export class MongoMarketRepository implements IMarketRepository {
     const db = await getMongoDb();
     const listings = db.collection<Listing>('listings');
     const offers = db.collection<Offer>('offers');
-    return { listings, offers };
+    const reports = db.collection<MarketReport>('reports');
+    return { listings, offers, reports };
   }
 
   async createListing(listing: Listing): Promise<Listing> {
@@ -140,6 +141,60 @@ export class MongoMarketRepository implements IMarketRepository {
     return updatedDoc;
   }
 
+  async createReport(input: CreateReportInput): Promise<{ report: MarketReport; flagged: boolean; duplicate: boolean }> {
+    const { listings, reports } = await this.getCollections();
+
+    // Check duplicate: same reporter reporting same target
+    const existing = await reports.findOne(
+      { reporterId: input.reporterId, targetId: input.targetId },
+      { projection: { _id: 0 } }
+    );
+
+    if (existing) {
+      return { report: existing, flagged: false, duplicate: true };
+    }
+
+    const reportId = `rep_${Date.now()}_${Math.random().toString(36).substring(2, 7)}`;
+    const doc: MarketReport = {
+      id: reportId,
+      reporterType: input.reporterType,
+      reporterId: input.reporterId,
+      targetType: input.targetType,
+      targetId: input.targetId,
+      targetName: input.targetName,
+      reason: input.reason,
+      notes: input.notes?.trim().slice(0, 500),
+      createdAt: new Date().toISOString(),
+    };
+
+    await reports.updateOne(
+      { id: doc.id },
+      { $set: doc },
+      { upsert: true }
+    );
+
+    const count = await reports.countDocuments({ targetId: input.targetId });
+    let flagged = false;
+
+    // Rule: More than 3 valid reports (> 3) triggers automatic flagging for verification
+    if (count > 3) {
+      flagged = true;
+      if (input.targetType === 'farmer') {
+        await listings.updateOne(
+          { id: input.targetId },
+          { $set: { isFlagged: true, reportCount: count } }
+        );
+      }
+    }
+
+    return { report: doc, flagged, duplicate: false };
+  }
+
+  async getReportsByTargetId(targetId: string): Promise<MarketReport[]> {
+    const { reports } = await this.getCollections();
+    return reports.find({ targetId }, { projection: { _id: 0 } }).toArray();
+  }
+
   async seed(listingsData: Listing[], offersData: Offer[], replace = true): Promise<{ listingCount: number; offerCount: number }> {
     const { listings, offers } = await this.getCollections();
     if (replace) {
@@ -160,8 +215,9 @@ export class MongoMarketRepository implements IMarketRepository {
   }
 
   async clear(): Promise<void> {
-    const { listings, offers } = await this.getCollections();
+    const { listings, offers, reports } = await this.getCollections();
     await listings.deleteMany({});
     await offers.deleteMany({});
+    await reports.deleteMany({});
   }
 }

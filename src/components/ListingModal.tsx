@@ -11,6 +11,10 @@ import {
   ShieldCheck,
   Lock,
   Check,
+  Flag,
+  AlertTriangle,
+  AlertCircle,
+  X,
 } from 'lucide-react';
 
 interface ListingModalProps {
@@ -75,6 +79,56 @@ export function ListingModal({
   const [submittingOffer, setSubmittingOffer] = useState(false);
   const [offerSuccess, setOfferSuccess] = useState(false);
   const [offerError, setOfferError] = useState<string | null>(null);
+
+  // Report Listing State
+  const [showReportModal, setShowReportModal] = useState(false);
+  const [reportReason, setReportReason] = useState<string>('fake_listing_or_bid');
+  const [reportNotes, setReportNotes] = useState<string>('');
+  const [reportSubmitting, setReportSubmitting] = useState(false);
+  const [reportError, setReportError] = useState<string | null>(null);
+  const [reportSuccess, setReportSuccess] = useState<string | null>(null);
+
+  const handleReportListing = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!listing) return;
+    setReportSubmitting(true);
+    setReportError(null);
+
+    const reporterId = selectedBuyerId === 'custom'
+      ? (customBuyerContact.trim() || 'buyer_custom')
+      : selectedBuyerId;
+
+    try {
+      const res = await fetch('/api/market/reports', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          reporterType: 'buyer',
+          reporterId,
+          targetType: 'farmer',
+          targetId: listing.id,
+          targetName: `${listing.village}, ${listing.district} Listing`,
+          reason: reportReason,
+          notes: reportNotes.trim() || undefined,
+        }),
+      });
+
+      const data = await res.json();
+      if (!res.ok) {
+        throw new Error(data.error || 'Failed to submit report');
+      }
+
+      setReportSuccess(data.message || 'Report submitted successfully.');
+      setTimeout(() => {
+        setShowReportModal(false);
+        setReportSuccess(null);
+      }, 2500);
+    } catch (err: unknown) {
+      setReportError(err instanceof Error ? err.message : 'Error submitting report');
+    } finally {
+      setReportSubmitting(false);
+    }
+  };
 
   // Load offers when modal opens
   useEffect(() => {
@@ -239,6 +293,18 @@ export function ListingModal({
         {/* Tab 1: Listing Details */}
         {activeTab === 'details' && (
           <div className="space-y-4 text-xs">
+            {listing.isFlagged && (
+              <div className="p-3 bg-red-50 border border-red-200 rounded-lg text-red-900 flex items-start gap-2">
+                <AlertTriangle className="w-4 h-4 text-[#C62828] shrink-0 mt-0.5" />
+                <div>
+                  <strong className="block text-xs">Notice: Under Administrative Review</strong>
+                  <span className="text-[11px]">
+                    This listing has received multiple community reports and is being verified by regional agricultural coordinators.
+                  </span>
+                </div>
+              </div>
+            )}
+
             <div className="flex items-center justify-between p-3 bg-[#F5F7FA] border border-[#D9DEE5] rounded-lg">
               <div>
                 <span className="text-[#5B6675] block text-[11px]">Current Status</span>
@@ -286,6 +352,24 @@ export function ListingModal({
                   Farmer contact numbers are kept private and never exposed to the public. Phone numbers are unlocked only after an offer is explicitly accepted by the farmer.
                 </p>
               </div>
+            </div>
+
+            {/* Report Listing Button */}
+            <div className="pt-2 flex items-center justify-between border-t border-[#D9DEE5]">
+              <span className="text-[11px] text-[#5B6675]">Found incorrect or fake details?</span>
+              <button
+                type="button"
+                onClick={() => {
+                  setShowReportModal(true);
+                  setReportError(null);
+                  setReportSuccess(null);
+                }}
+                className="text-[11px] text-[#5B6675] hover:text-[#C62828] font-medium flex items-center gap-1 transition-colors"
+                title="Report this listing"
+              >
+                <Flag className="w-3 h-3" />
+                <span>Report Listing</span>
+              </button>
             </div>
           </div>
         )}
@@ -501,6 +585,111 @@ export function ListingModal({
           </div>
         )}
       </div>
+
+      {/* Report Listing Modal Popup */}
+      {showReportModal && (
+        <div
+          className="fixed inset-0 z-50 bg-slate-900/50 backdrop-blur-xs flex items-center justify-center p-4 overflow-y-auto"
+          role="dialog"
+          aria-modal="true"
+        >
+          <div className="bg-white border border-[#D9DEE5] rounded-xl shadow-xl max-w-md w-full overflow-hidden animate-in fade-in zoom-in-95 duration-150">
+            <div className="px-5 py-4 border-b border-[#D9DEE5] bg-[#F5F7FA] flex items-center justify-between">
+              <div>
+                <h3 className="text-sm font-bold text-[#1F3A5F] flex items-center gap-2">
+                  <Flag className="w-4 h-4 text-[#C62828]" />
+                  <span>Report Listing #{listing.id}</span>
+                </h3>
+                <p className="text-[11px] text-[#5B6675] mt-0.5">
+                  {listing.village}, {listing.district}
+                </p>
+              </div>
+              <button
+                type="button"
+                onClick={() => setShowReportModal(false)}
+                disabled={reportSubmitting}
+                className="p-1.5 text-[#5B6675] hover:text-[#1B2430] hover:bg-slate-200/60 rounded-md transition-colors"
+                title="Close"
+              >
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+
+            <form onSubmit={handleReportListing} className="p-5 space-y-4 text-xs">
+              {reportSuccess && (
+                <div className="p-3 bg-emerald-50 border border-emerald-200 rounded-lg text-emerald-900 flex items-start gap-2">
+                  <Check className="w-4 h-4 text-[#2E7D32] shrink-0 mt-0.5" />
+                  <span>{reportSuccess}</span>
+                </div>
+              )}
+
+              {reportError && (
+                <div className="p-3 bg-red-50 border border-red-200 rounded-lg text-red-900 flex items-start gap-2">
+                  <AlertCircle className="w-4 h-4 text-[#C62828] shrink-0 mt-0.5" />
+                  <span>{reportError}</span>
+                </div>
+              )}
+
+              <div>
+                <label className="block text-[#1B2430] font-semibold mb-1">
+                  Reason for Complaint <span className="text-red-500">*</span>
+                </label>
+                <select
+                  value={reportReason}
+                  onChange={(e) => setReportReason(e.target.value)}
+                  className="w-full px-3 py-2 border border-[#D9DEE5] rounded-md text-xs text-[#1B2430] bg-white focus:outline-none focus:ring-1 focus:ring-[#1F3A5F]"
+                >
+                  <option value="fake_listing_or_bid">Fake or non-existent stubble listing</option>
+                  <option value="incorrect_quantity_quality">Inaccurate quantity or poor straw quality</option>
+                  <option value="unresponsive_contact">Farmer unreachable after accepted offer</option>
+                  <option value="no_show_pickup">Residue was already burnt or refused pickup</option>
+                  <option value="inappropriate_behavior">Unprofessional or inappropriate conduct</option>
+                  <option value="other">Other issue</option>
+                </select>
+              </div>
+
+              <div>
+                <label className="block text-[#1B2430] font-semibold mb-1">
+                  Details <span className="text-[#5B6675] font-normal">(Optional, max 500 characters)</span>
+                </label>
+                <textarea
+                  rows={3}
+                  maxLength={500}
+                  value={reportNotes}
+                  onChange={(e) => setReportNotes(e.target.value)}
+                  placeholder="Provide details about the issue..."
+                  className="w-full px-3 py-2 border border-[#D9DEE5] rounded-md text-xs text-[#1B2430] bg-white focus:outline-none focus:ring-1 focus:ring-[#1F3A5F]"
+                />
+              </div>
+
+              <div className="p-2.5 bg-amber-50 border border-amber-200 rounded text-[11px] text-amber-900 flex items-start gap-2">
+                <AlertTriangle className="w-4 h-4 text-amber-700 shrink-0 mt-0.5" />
+                <span>
+                  Listings receiving more than 3 valid reports are flagged for coordinator review and blacklisting.
+                </span>
+              </div>
+
+              <div className="pt-2 border-t border-[#D9DEE5] flex items-center justify-end gap-2">
+                <button
+                  type="button"
+                  disabled={reportSubmitting}
+                  onClick={() => setShowReportModal(false)}
+                  className="px-3.5 py-1.5 bg-white hover:bg-slate-50 border border-[#D9DEE5] text-[#5B6675] rounded-md font-medium"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  disabled={reportSubmitting}
+                  className="px-4 py-1.5 bg-[#C62828] hover:bg-[#B71C1C] disabled:opacity-50 text-white rounded-md font-semibold"
+                >
+                  {reportSubmitting ? 'Submitting...' : 'Submit Report'}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
     </Modal>
   );
 }
