@@ -98,7 +98,7 @@ Edit `.env.local`:
 FIRMS_MAP_KEY=your_key_here
 
 # Public site URL used to construct WhatsApp deep links
-NEXT_PUBLIC_SITE_URL=https://krishivayu-dw9o.vercel.app
+NEXT_PUBLIC_SITE_URL=https://krishi-vaayu.vercel.app
 ```
 
 ### 3. Run Development Server

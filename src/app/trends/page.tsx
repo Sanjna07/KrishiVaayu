@@ -176,6 +176,7 @@ function YearPills({
 
 export default function TrendsPage() {
   const [data, setData] = useState<CreamsData | null>(null);
+  const [loadingData, setLoadingData] = useState(true);
   const [season, setSeason] = useState<'paddy' | 'wheat'>('paddy');
   const [stateFilter, setStateFilter] = useState<string>('all');
   const [selectedYears, setSelectedYears] = useState<string[]>(['2022', '2023', '2024', '2025']);
@@ -188,13 +189,29 @@ export default function TrendsPage() {
 
   // Fetch CREAMS historical dataset
   useEffect(() => {
-    fetch('/data/historical_trends.json')
-      .then((r) => r.json())
-      .then((json) => {
-        setData(json[season] ?? null);
+    setLoadingData(true);
+    fetch(`/data/creams_${season}.json`)
+      .then((r) => {
+        if (!r.ok) throw new Error(`Failed to load CREAMS data: HTTP ${r.status}`);
+        return r.json();
       })
-      .catch((err) => console.error('Failed to load historical data:', err));
+      .then((json: CreamsData) => {
+        setData(json);
+      })
+      .catch((err) => console.error('Failed to load historical data:', err))
+      .finally(() => setLoadingData(false));
   }, [season]);
+
+  // Adjust selected years when season dataset loads
+  useEffect(() => {
+    if (data?.state_totals?.PUNJAB) {
+      const available = Object.keys(data.state_totals.PUNJAB).sort();
+      setSelectedYears((prev) => {
+        const valid = prev.filter((y) => available.includes(y) || y === '2026');
+        return valid.length > 0 ? valid : available.slice(-4);
+      });
+    }
+  }, [data]);
 
   const fetchFirms = useCallback((days: number) => {
     setFirmsLoading(true);

@@ -8,7 +8,7 @@
 import type { DistrictSummary, FarmerMessageTemplate } from '@/types';
 
 export function getMarketplaceSellUrl(districtName: string): string {
-  const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || 'https://krishivayu-dw9o.vercel.app';
+  const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || 'https://krishi-vaayu.vercel.app';
   return `${siteUrl}/market/sell?district=${encodeURIComponent(districtName)}&ref=wa`;
 }
 

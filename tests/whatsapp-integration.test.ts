@@ -6,20 +6,19 @@ console.log('--- RUNNING WHATSAPP INTEGRATION & DEEP LINK TESTS (M7) ---');
 
 // Mock districts for validation
 const sangrurMock: DistrictSummary = {
+  districtKey: 'Sangrur_Punjab',
   name: 'Sangrur',
   state: 'Punjab',
   lat: 30.24,
   lon: 75.84,
   fireCount: 42,
+  totalFrp: 120,
+  avgFrp: 2.8,
   riskScore: 82,
   riskLevel: 'critical',
   distanceToDelhiKm: 215,
   bearingToDelhiDeg: 135,
-  windSpeedKmh: 12,
-  windDirectionCardinal: 'NW',
-  windTowardsDelhi: true,
   windAlignment: 0.95,
-  nearestAlternativeDistanceKm: 8,
   matchedAlternatives: [
     {
       id: 'CBG-PB-01',
@@ -30,26 +29,28 @@ const sangrurMock: DistrictSummary = {
       lon: 75.80,
       contact: 'Toll-free 1800-180-2024',
       priceQuote: '₹210 / quintal farmgate',
+      district: 'Sangrur',
+      state: 'Punjab',
+      source: 'cbg_portal',
       isDemo: false,
     },
   ],
 };
 
 const bathindaMock: DistrictSummary = {
+  districtKey: 'Bathinda_Punjab',
   name: 'Bathinda',
   state: 'Punjab',
   lat: 30.21,
   lon: 74.95,
   fireCount: 28,
+  totalFrp: 84,
+  avgFrp: 3.0,
   riskScore: 68,
   riskLevel: 'high',
   distanceToDelhiKm: 310,
   bearingToDelhiDeg: 128,
-  windSpeedKmh: 9,
-  windDirectionCardinal: 'WNW',
-  windTowardsDelhi: true,
   windAlignment: 0.88,
-  nearestAlternativeDistanceKm: 14,
   matchedAlternatives: [
     {
       id: 'BP-PB-05',
@@ -60,6 +61,9 @@ const bathindaMock: DistrictSummary = {
       lon: 75.02,
       contact: 'Facility Nodal Desk',
       priceQuote: '₹195 / quintal',
+      district: 'Bathinda',
+      state: 'Punjab',
+      source: 'cbg_portal',
       isDemo: false,
     },
   ],
