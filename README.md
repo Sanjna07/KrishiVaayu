@@ -6,7 +6,7 @@
 >
 > **Track:** Green Tech / Sustainable Development · Civic Tech MVP
 >
-> **Live Deployment:** [https://krishivayu-dw9o.vercel.app/](https://krishivayu-dw9o.vercel.app/)
+> **Live Deployment:** [https://krishi-vaayu.vercel.app/](https://krishi-vaayu.vercel.app/)
 
 ---
 
