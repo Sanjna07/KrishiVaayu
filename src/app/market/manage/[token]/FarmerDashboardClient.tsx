@@ -13,6 +13,8 @@ import {
   Check,
   Copy,
   Share2,
+  Pencil,
+  X,
 } from 'lucide-react';
 
 interface FarmerDashboardClientProps {
@@ -27,6 +29,106 @@ export default function FarmerDashboardClient({ token }: FarmerDashboardClientPr
   const [actionSuccess, setActionSuccess] = useState<string | null>(null);
   const [actionLoading, setActionLoading] = useState(false);
   const [copiedLink, setCopiedLink] = useState(false);
+
+  // Edit Listing Details State
+  const [isEditModalOpen, setIsEditModalOpen] = useState(false);
+  const [editVillage, setEditVillage] = useState('');
+  const [editQuantity, setEditQuantity] = useState('');
+  const [editForm, setEditForm] = useState<'loose' | 'baled'>('baled');
+  const [editPrice, setEditPrice] = useState('');
+  const [editStartDate, setEditStartDate] = useState('');
+  const [editEndDate, setEditEndDate] = useState('');
+  const [editPhone, setEditPhone] = useState('');
+  const [editSaving, setEditSaving] = useState(false);
+  const [editError, setEditError] = useState<string | null>(null);
+
+  const openEditModal = () => {
+    if (!listing) return;
+    setEditVillage(listing.village);
+    setEditQuantity(String(listing.quantityQuintals));
+    setEditForm(listing.form);
+    setEditPrice(listing.askingPricePerQuintal ? String(listing.askingPricePerQuintal) : '');
+    setEditStartDate(listing.availability.startDate);
+    setEditEndDate(listing.availability.endDate);
+    setEditPhone(listing.phone || '');
+    setEditError(null);
+    setIsEditModalOpen(true);
+  };
+
+  const closeEditModal = () => {
+    if (editSaving) return;
+    setIsEditModalOpen(false);
+    setEditError(null);
+  };
+
+  const handleSaveEdit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!listing) return;
+
+    setEditSaving(true);
+    setEditError(null);
+
+    try {
+      if (!editVillage.trim()) {
+        throw new Error('Please enter a village name.');
+      }
+      const qtyNum = parseFloat(editQuantity);
+      if (isNaN(qtyNum) || qtyNum < 1 || qtyNum > 50000) {
+        throw new Error('Quantity must be between 1 and 50,000 quintals.');
+      }
+      if (!editStartDate || !editEndDate) {
+        throw new Error('Both availability start and end dates are required.');
+      }
+      if (new Date(editEndDate) < new Date(editStartDate)) {
+        throw new Error('Availability end date cannot be earlier than start date.');
+      }
+      const cleanedPhone = editPhone.replace(/[\s\-\(\)]/g, '');
+      const phoneMatch = cleanedPhone.match(/^(?:\+91|91|0)?([6-9]\d{9})$/);
+      if (!phoneMatch) {
+        throw new Error('Please enter a valid 10-digit Indian mobile number (e.g., 9876543210).');
+      }
+
+      let priceNum: number | undefined = undefined;
+      if (editPrice.trim()) {
+        priceNum = parseFloat(editPrice);
+        if (isNaN(priceNum) || priceNum <= 0 || priceNum > 5000) {
+          throw new Error('Asking price must be between ₹1 and ₹5,000 per quintal.');
+        }
+      }
+
+      const res = await fetch(`/api/market/listings/${listing.id}`, {
+        method: 'PATCH',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify({
+          updateDetails: {
+            village: editVillage.trim(),
+            quantityQuintals: qtyNum,
+            form: editForm,
+            askingPricePerQuintal: priceNum,
+            startDate: editStartDate,
+            endDate: editEndDate,
+            phone: phoneMatch[1],
+          },
+        }),
+      });
+
+      const data = await res.json();
+      if (!res.ok) {
+        throw new Error(data.error || 'Failed to update listing');
+      }
+
+      setActionSuccess('✓ Listing details successfully updated.');
+      setIsEditModalOpen(false);
+      await fetchDashboardData();
+    } catch (err: unknown) {
+      setEditError(err instanceof Error ? err.message : 'Failed to update listing');
+    } finally {
+      setEditSaving(false);
+    }
+  };
 
   const fetchDashboardData = useCallback(async () => {
     try {
@@ -307,7 +409,20 @@ export default function FarmerDashboardClient({ token }: FarmerDashboardClientPr
                 Listing ID: {listing.id}
               </p>
             </div>
-            {getStatusBadge(listing.status)}
+            <div className="flex items-center gap-2">
+              {['listed', 'offered', 'accepted', 'pickup_scheduled'].includes(listing.status) && (
+                <button
+                  type="button"
+                  onClick={openEditModal}
+                  className="px-3 py-1.5 bg-white hover:bg-slate-50 text-[#1F3A5F] border border-[#D9DEE5] rounded-md text-xs font-semibold flex items-center gap-1.5 shadow-xs transition-colors min-h-[32px]"
+                  title="Edit listing details"
+                >
+                  <Pencil className="w-3.5 h-3.5 text-[#1F3A5F]" />
+                  <span>Edit Details</span>
+                </button>
+              )}
+              {getStatusBadge(listing.status)}
+            </div>
           </div>
 
           <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 py-3 border-y border-[#D9DEE5] my-3 text-xs">
@@ -513,6 +628,214 @@ export default function FarmerDashboardClient({ token }: FarmerDashboardClientPr
           )}
         </div>
       </main>
+
+      {/* Edit Listing Details Modal */}
+      {isEditModalOpen && (
+        <div
+          className="fixed inset-0 z-50 bg-slate-900/50 backdrop-blur-xs flex items-center justify-center p-4 overflow-y-auto"
+          role="dialog"
+          aria-modal="true"
+          aria-labelledby="edit-modal-title"
+        >
+          <div className="bg-white border border-[#D9DEE5] rounded-xl shadow-xl max-w-lg w-full max-h-[92vh] flex flex-col my-auto overflow-hidden animate-in fade-in zoom-in-95 duration-150">
+            {/* Modal Header */}
+            <div className="px-5 py-4 border-b border-[#D9DEE5] bg-[#F5F7FA] flex items-center justify-between">
+              <div>
+                <h2 id="edit-modal-title" className="text-base font-bold text-[#1F3A5F] flex items-center gap-2">
+                  <Pencil className="w-4 h-4 text-[#2E7D32]" />
+                  <span>Edit Listing Details</span>
+                </h2>
+                <p className="text-xs text-[#5B6675] mt-0.5">
+                  Update crop residue volume, asking price, dates, or contact info
+                </p>
+              </div>
+              <button
+                type="button"
+                onClick={closeEditModal}
+                disabled={editSaving}
+                className="p-1.5 text-[#5B6675] hover:text-[#1B2430] hover:bg-slate-200/60 rounded-md transition-colors"
+                title="Close"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            {/* Modal Body Form */}
+            <form onSubmit={handleSaveEdit} className="p-5 overflow-y-auto space-y-4 text-xs">
+              {editError && (
+                <div className="p-3 bg-red-50 border border-red-200 rounded-lg text-red-900 flex items-start gap-2">
+                  <AlertCircle className="w-4 h-4 text-[#C62828] shrink-0 mt-0.5" />
+                  <span>{editError}</span>
+                </div>
+              )}
+
+              {/* Village */}
+              <div>
+                <label className="block text-[#1B2430] font-semibold mb-1">
+                  Village Name <span className="text-red-500">*</span>
+                </label>
+                <input
+                  type="text"
+                  required
+                  maxLength={100}
+                  value={editVillage}
+                  onChange={(e) => setEditVillage(e.target.value)}
+                  placeholder="e.g., Cheema"
+                  className="w-full px-3 py-2 border border-[#D9DEE5] rounded-md text-xs text-[#1B2430] bg-white focus:outline-none focus:ring-1 focus:ring-[#2E7D32] focus:border-[#2E7D32]"
+                />
+              </div>
+
+              {/* District & State (Read only info) */}
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="block text-[#5B6675] font-medium mb-1">District</label>
+                  <input
+                    type="text"
+                    disabled
+                    value={listing.district}
+                    className="w-full px-3 py-2 border border-[#D9DEE5] rounded-md text-xs text-[#5B6675] bg-[#F5F7FA] cursor-not-allowed"
+                  />
+                </div>
+                <div>
+                  <label className="block text-[#5B6675] font-medium mb-1">State</label>
+                  <input
+                    type="text"
+                    disabled
+                    value={listing.state || 'Punjab'}
+                    className="w-full px-3 py-2 border border-[#D9DEE5] rounded-md text-xs text-[#5B6675] bg-[#F5F7FA] cursor-not-allowed"
+                  />
+                </div>
+              </div>
+
+              {/* Form & Quantity */}
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                <div>
+                  <label className="block text-[#1B2430] font-semibold mb-1">
+                    Residue Form <span className="text-red-500">*</span>
+                  </label>
+                  <select
+                    value={editForm}
+                    onChange={(e) => setEditForm(e.target.value as 'loose' | 'baled')}
+                    className="w-full px-3 py-2 border border-[#D9DEE5] rounded-md text-xs text-[#1B2430] bg-white focus:outline-none focus:ring-1 focus:ring-[#2E7D32] focus:border-[#2E7D32]"
+                  >
+                    <option value="baled">📦 Baled Bundles (Recommended)</option>
+                    <option value="loose">🌾 Loose Straw</option>
+                  </select>
+                </div>
+                <div>
+                  <label className="block text-[#1B2430] font-semibold mb-1">
+                    Quantity (Quintals) <span className="text-red-500">*</span>
+                  </label>
+                  <input
+                    type="number"
+                    min="1"
+                    max="50000"
+                    step="0.1"
+                    required
+                    value={editQuantity}
+                    onChange={(e) => setEditQuantity(e.target.value)}
+                    placeholder="e.g., 250"
+                    className="w-full px-3 py-2 border border-[#D9DEE5] rounded-md text-xs text-[#1B2430] bg-white focus:outline-none focus:ring-1 focus:ring-[#2E7D32] focus:border-[#2E7D32]"
+                  />
+                </div>
+              </div>
+
+              {/* Asking Price */}
+              <div>
+                <label className="block text-[#1B2430] font-semibold mb-1">
+                  Asking Price (₹ / Quintal) <span className="text-[#5B6675] font-normal">(Optional, leave blank for negotiable)</span>
+                </label>
+                <input
+                  type="number"
+                  min="1"
+                  max="5000"
+                  value={editPrice}
+                  onChange={(e) => setEditPrice(e.target.value)}
+                  placeholder="e.g., 215"
+                  className="w-full px-3 py-2 border border-[#D9DEE5] rounded-md text-xs text-[#1B2430] bg-white focus:outline-none focus:ring-1 focus:ring-[#2E7D32] focus:border-[#2E7D32]"
+                />
+              </div>
+
+              {/* Availability Window */}
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                <div>
+                  <label className="block text-[#1B2430] font-semibold mb-1">
+                    Available From <span className="text-red-500">*</span>
+                  </label>
+                  <input
+                    type="date"
+                    required
+                    value={editStartDate}
+                    onChange={(e) => setEditStartDate(e.target.value)}
+                    className="w-full px-3 py-2 border border-[#D9DEE5] rounded-md text-xs text-[#1B2430] bg-white focus:outline-none focus:ring-1 focus:ring-[#2E7D32] focus:border-[#2E7D32]"
+                  />
+                </div>
+                <div>
+                  <label className="block text-[#1B2430] font-semibold mb-1">
+                    Available Until <span className="text-red-500">*</span>
+                  </label>
+                  <input
+                    type="date"
+                    required
+                    value={editEndDate}
+                    onChange={(e) => setEditEndDate(e.target.value)}
+                    className="w-full px-3 py-2 border border-[#D9DEE5] rounded-md text-xs text-[#1B2430] bg-white focus:outline-none focus:ring-1 focus:ring-[#2E7D32] focus:border-[#2E7D32]"
+                  />
+                </div>
+              </div>
+
+              {/* Mobile Phone Number */}
+              <div>
+                <label className="block text-[#1B2430] font-semibold mb-1">
+                  Registered Mobile Phone <span className="text-red-500">*</span>
+                </label>
+                <input
+                  type="tel"
+                  required
+                  maxLength={10}
+                  value={editPhone}
+                  onChange={(e) => setEditPhone(e.target.value.replace(/\D/g, '').slice(0, 10))}
+                  placeholder="10-digit mobile number (e.g., 9876543210)"
+                  className="w-full px-3 py-2 border border-[#D9DEE5] rounded-md text-xs text-[#1B2430] bg-white focus:outline-none focus:ring-1 focus:ring-[#2E7D32] focus:border-[#2E7D32] font-mono"
+                />
+                <p className="text-[11px] text-[#5B6675] mt-1 flex items-center gap-1">
+                  <ShieldCheck className="w-3.5 h-3.5 text-[#2E7D32]" />
+                  <span>Phone is encrypted and revealed to buyers ONLY after you accept their offer.</span>
+                </p>
+              </div>
+
+              {/* Form Actions */}
+              <div className="pt-3 border-t border-[#D9DEE5] flex items-center justify-end gap-2">
+                <button
+                  type="button"
+                  disabled={editSaving}
+                  onClick={closeEditModal}
+                  className="px-4 py-2 bg-white hover:bg-slate-50 border border-[#D9DEE5] text-[#5B6675] hover:text-[#1B2430] font-medium rounded-md transition-colors"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  disabled={editSaving}
+                  className="px-4 py-2 bg-[#2E7D32] hover:bg-[#236327] disabled:opacity-50 text-white font-semibold rounded-md shadow-xs flex items-center gap-1.5 transition-colors"
+                >
+                  {editSaving ? (
+                    <>
+                      <span className="w-3.5 h-3.5 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                      <span>Saving...</span>
+                    </>
+                  ) : (
+                    <>
+                      <Check className="w-3.5 h-3.5" />
+                      <span>Save Changes</span>
+                    </>
+                  )}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

@@ -35,6 +35,33 @@ async function testFullLifecycle() {
   assert.strictEqual(initialListing.status, 'listed');
   console.log(`✓ 1. Listing created: #${listingId} (status: listed) with private token.`);
 
+  // 1b. Farmer edits listing details (Phase 5 edit feature)
+  const editListingReq = new Request(`http://localhost:3000/api/market/listings/${listingId}`, {
+    method: 'PATCH',
+    headers: {
+      'Content-Type': 'application/json',
+      Authorization: `Bearer ${editToken}`,
+    },
+    body: JSON.stringify({
+      updateDetails: {
+        village: 'Cheema Khurd',
+        quantityQuintals: 300,
+        askingPricePerQuintal: 220,
+        phone: '9888877777',
+      },
+    }),
+  });
+  const editListingRes = await patchListingRoute(editListingReq, {
+    params: Promise.resolve({ id: listingId }),
+  });
+  assert.strictEqual(editListingRes.status, 200);
+  const editData = await editListingRes.json();
+  assert.strictEqual(editData.listing.village, 'Cheema Khurd');
+  assert.strictEqual(editData.listing.quantityQuintals, 300);
+  assert.strictEqual(editData.listing.askingPricePerQuintal, 220);
+  assert.strictEqual(editData.listing.phone, '9888877777');
+  console.log('✓ 1b. Farmer successfully edited listing details (village, quantity, price, phone).');
+
   // 2. Buyer submits offer #1
   const offer1Req = new Request('http://localhost:3000/api/market/offers', {
     method: 'POST',

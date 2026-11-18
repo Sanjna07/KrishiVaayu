@@ -2,6 +2,10 @@ import { NextResponse } from 'next/server';
 import { marketRepo } from '@/lib/repo/marketRepo';
 import {
   transitionListingStatus,
+  validateQuantity,
+  validateDateRange,
+  validatePrice,
+  validatePhone,
 } from '@/lib/market';
 import {
   verifyListingToken,
@@ -9,7 +13,7 @@ import {
   sanitizeOfferForPublic,
 } from '@/lib/marketSanitizer';
 import { checkRateLimit, getClientIp } from '@/lib/rateLimit';
-import type { ListingAction } from '@/types/market';
+import type { ListingAction, Listing } from '@/types/market';
 
 function extractToken(request: Request, bodyToken?: unknown): string | null {
   if (typeof bodyToken === 'string' && bodyToken.trim()) {
@@ -130,10 +134,66 @@ export async function PATCH(
       );
     }
 
+    // Branch A: Farmer updates listing details
+    if (body.updateDetails && typeof body.updateDetails === 'object') {
+      if (listing.status === 'collected' || listing.status === 'withdrawn') {
+        return NextResponse.json(
+          { error: `Cannot edit listing details when status is '${listing.status}'` },
+          { status: 400 }
+        );
+      }
+
+      const details = body.updateDetails as Record<string, unknown>;
+      const partialUpdate: Partial<Listing> = {};
+
+      if (details.village !== undefined) {
+        if (typeof details.village !== 'string' || !details.village.trim()) {
+          return NextResponse.json({ error: 'Village name cannot be empty' }, { status: 400 });
+        }
+        partialUpdate.village = details.village.trim().slice(0, 100);
+      }
+
+      if (details.quantityQuintals !== undefined) {
+        partialUpdate.quantityQuintals = validateQuantity(details.quantityQuintals);
+      }
+
+      if (details.form !== undefined) {
+        if (details.form !== 'loose' && details.form !== 'baled') {
+          return NextResponse.json({ error: "Form must be either 'loose' or 'baled'" }, { status: 400 });
+        }
+        partialUpdate.form = details.form;
+      }
+
+      if (details.startDate !== undefined || details.endDate !== undefined) {
+        const start = details.startDate !== undefined ? details.startDate : listing.availability.startDate;
+        const end = details.endDate !== undefined ? details.endDate : listing.availability.endDate;
+        const dateRange = validateDateRange(start, end);
+        partialUpdate.availability = dateRange;
+      }
+
+      if (details.askingPricePerQuintal !== undefined) {
+        partialUpdate.askingPricePerQuintal = validatePrice(details.askingPricePerQuintal);
+      }
+
+      if (details.phone !== undefined) {
+        partialUpdate.phone = validatePhone(details.phone, true);
+      }
+
+      const updated = await marketRepo.updateListing(id, partialUpdate);
+      const { editTokenHash, ...sanitized } = updated;
+      void editTokenHash;
+
+      return NextResponse.json({
+        success: true,
+        listing: sanitized,
+      });
+    }
+
+    // Branch B: Lifecycle action
     const action = body.action as ListingAction;
     if (!action || typeof action.type !== 'string') {
       return NextResponse.json(
-        { error: "Missing or invalid action. Must specify { action: { type: '...' } }" },
+        { error: "Missing or invalid payload. Must specify either 'updateDetails' or { action: { type: '...' } }" },
         { status: 400 }
       );
     }
