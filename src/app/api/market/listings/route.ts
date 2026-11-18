@@ -7,6 +7,7 @@ import {
 } from '@/lib/market';
 import { sanitizeListingForPublic } from '@/lib/marketSanitizer';
 import { checkRateLimit, getClientIp } from '@/lib/rateLimit';
+import { sendFarmerListingCreatedSms } from '@/lib/services/smsService';
 import type { ListingStatus, StrawForm } from '@/types/market';
 
 export async function GET(request: Request) {
@@ -78,11 +79,23 @@ export async function POST(request: Request) {
       askingPricePerQuintal: validatedInput.askingPricePerQuintal,
       phone: validatedInput.phone,
       editTokenHash,
+      rawEditToken: editToken,
       status: 'listed',
       isDemo: Boolean(validatedInput.isDemo),
       createdAt: new Date().toISOString(),
       updatedAt: new Date().toISOString(),
     });
+
+    // Dispatch Fast2SMS recovery link to farmer
+    if (newListing.phone) {
+      void sendFarmerListingCreatedSms({
+        phone: newListing.phone,
+        listingId: newListing.id,
+        village: newListing.village,
+        quantityQuintals: newListing.quantityQuintals,
+        editToken,
+      });
+    }
 
     return NextResponse.json(
       {

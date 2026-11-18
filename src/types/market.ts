@@ -31,6 +31,7 @@ export interface Listing {
   askingPricePerQuintal?: number; // Optional farmer asking price in INR
   phone?: string;                 // Stored encrypted/private, revealed only upon offer acceptance
   editTokenHash: string;          // SHA-256 hash of farmer's private edit token
+  rawEditToken?: string;          // Private token retained strictly server-side for dispatching dashboard links in SMS alerts
   status: ListingStatus;
   isDemo: boolean;
   acceptedOfferId?: string;

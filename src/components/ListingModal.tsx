@@ -33,7 +33,7 @@ const DEMO_BUYERS: BuyerProfile[] = [
     type: 'pellet_unit',
     district: 'Bathinda',
     state: 'Punjab',
-    contact: '98111-DEMO1',
+    contact: '9811100001',
     isDemo: true,
   },
   {
@@ -42,7 +42,7 @@ const DEMO_BUYERS: BuyerProfile[] = [
     type: 'cbg_plant',
     district: 'Sangrur',
     state: 'Punjab',
-    contact: '98222-DEMO2',
+    contact: '9822200002',
     isDemo: true,
   },
   {
@@ -51,7 +51,7 @@ const DEMO_BUYERS: BuyerProfile[] = [
     type: 'residue_buyer',
     district: 'Patiala',
     state: 'Punjab',
-    contact: '98333-DEMO3',
+    contact: '9833300003',
     isDemo: true,
   },
 ];
@@ -72,13 +72,27 @@ export function ListingModal({
   const [selectedBuyerId, setSelectedBuyerId] = useState<string>(DEMO_BUYERS[0].id);
   const [customBuyerName, setCustomBuyerName] = useState<string>('');
   const [customBuyerType, setCustomBuyerType] = useState<Offer['buyerType']>('cbg_plant');
-  const [customBuyerContact, setCustomBuyerContact] = useState<string>('');
+  const [buyerContact, setBuyerContact] = useState<string>(DEMO_BUYERS[0].contact);
   const [offerRate, setOfferRate] = useState<number>(200);
   const [pickupDate, setPickupDate] = useState<string>('');
   const [buyerNote, setBuyerNote] = useState<string>('');
   const [submittingOffer, setSubmittingOffer] = useState(false);
   const [offerSuccess, setOfferSuccess] = useState(false);
   const [offerError, setOfferError] = useState<string | null>(null);
+
+  const handleBuyerSelectionChange = (newBuyerId: string) => {
+    setSelectedBuyerId(newBuyerId);
+    if (newBuyerId !== 'custom') {
+      const preset = DEMO_BUYERS.find((b) => b.id === newBuyerId);
+      if (preset) {
+        // If the contact matches one of the presets or is empty, update to the selected preset's contact
+        const isPresetPattern = !buyerContact || DEMO_BUYERS.some((d) => d.contact === buyerContact);
+        if (isPresetPattern) {
+          setBuyerContact(preset.contact);
+        }
+      }
+    }
+  };
 
   // Report Listing State
   const [showReportModal, setShowReportModal] = useState(false);
@@ -94,9 +108,7 @@ export function ListingModal({
     setReportSubmitting(true);
     setReportError(null);
 
-    const reporterId = selectedBuyerId === 'custom'
-      ? (customBuyerContact.trim() || 'buyer_custom')
-      : selectedBuyerId;
+    const reporterId = buyerContact.trim() || selectedBuyerId;
 
     try {
       const res = await fetch('/api/market/reports', {
@@ -158,10 +170,19 @@ export function ListingModal({
     setSubmittingOffer(true);
     setOfferError(null);
 
+    // Validate 10-digit Indian mobile number for Fast2SMS alerts & coordination
+    const cleanPhone = buyerContact.trim().replace(/[\s\-\(\)\+]/g, '');
+    const phoneMatch = cleanPhone.match(/^(?:91|0)?([6-9]\d{9})$/);
+    if (!phoneMatch) {
+      setOfferError('Please enter a valid 10-digit Indian mobile number for SMS notifications (starts with 6-9)');
+      setSubmittingOffer(false);
+      return;
+    }
+    const validatedBuyerContact = phoneMatch[1];
+
     let buyerId: string;
     let buyerName: string;
     let buyerType: Offer['buyerType'];
-    let buyerContact: string;
     let isDemo = false;
 
     if (selectedBuyerId === 'custom') {
@@ -170,24 +191,15 @@ export function ListingModal({
         setSubmittingOffer(false);
         return;
       }
-      const cleanPhone = customBuyerContact.trim().replace(/[\s\-\(\)]/g, '');
-      const phoneMatch = cleanPhone.match(/^(?:\+91|91|0)?([6-9]\d{9})$/);
-      if (!phoneMatch) {
-        setOfferError('Please enter a valid 10-digit mobile contact number');
-        setSubmittingOffer(false);
-        return;
-      }
       buyerId = `buyer_${Date.now()}_${Math.random().toString(36).substring(2, 6)}`;
       buyerName = customBuyerName.trim();
       buyerType = customBuyerType;
-      buyerContact = phoneMatch[1];
       isDemo = false;
     } else {
       const preset = DEMO_BUYERS.find((b) => b.id === selectedBuyerId) || DEMO_BUYERS[0];
       buyerId = preset.id;
       buyerName = preset.name;
       buyerType = preset.type;
-      buyerContact = preset.contact;
       isDemo = true;
     }
 
@@ -199,7 +211,7 @@ export function ListingModal({
           listingId: listing.id,
           buyerId,
           buyerName,
-          buyerContact,
+          buyerContact: validatedBuyerContact,
           buyerType,
           pricePerQuintal: Number(offerRate),
           proposedPickupDate: pickupDate,
@@ -458,18 +470,18 @@ export function ListingModal({
                   </label>
                   <select
                     value={selectedBuyerId}
-                    onChange={(e) => setSelectedBuyerId(e.target.value)}
+                    onChange={(e) => handleBuyerSelectionChange(e.target.value)}
                     className="w-full bg-white border border-[#D9DEE5] rounded-md p-2 text-xs text-[#1B2430] focus:ring-2 focus:ring-[#1F3A5F]"
                   >
                     <optgroup label="Preset Verified Plants / Buyers">
                       {DEMO_BUYERS.map((b) => (
                         <option key={b.id} value={b.id}>
-                          {b.name} ({b.district} · {b.type})
+                          {b.name} ({b.district} · {b.type.replace('_', ' ')})
                         </option>
                       ))}
                     </optgroup>
                     <optgroup label="Direct / Custom Buyer">
-                      <option value="custom">+ Enter Custom Organization / New Buyer</option>
+                      <option value="custom">➕ Enter Custom Organization / New Buyer</option>
                     </optgroup>
                   </select>
                 </div>
@@ -490,40 +502,46 @@ export function ListingModal({
                       />
                     </div>
 
-                    <div className="grid grid-cols-2 gap-2.5">
-                      <div>
-                        <label className="block text-[11px] font-semibold text-[#5B6675] mb-1">
-                          Buyer Type
-                        </label>
-                        <select
-                          value={customBuyerType}
-                          onChange={(e) => setCustomBuyerType(e.target.value as Offer['buyerType'])}
-                          className="w-full bg-white border border-[#D9DEE5] rounded-md p-2 text-xs text-[#1B2430] focus:ring-2 focus:ring-[#1F3A5F]"
-                        >
-                          <option value="cbg_plant">Bio-CNG (CBG) Plant</option>
-                          <option value="biomass_plant">Biomass Power Plant</option>
-                          <option value="pellet_unit">Biomass Pellet Unit</option>
-                          <option value="residue_buyer">Residue Off-Taker</option>
-                          <option value="aggregator">Straw Aggregator</option>
-                        </select>
-                      </div>
-
-                      <div>
-                        <label className="block text-[11px] font-semibold text-[#5B6675] mb-1">
-                          Contact Phone <span className="text-red-500">*</span>
-                        </label>
-                        <input
-                          type="tel"
-                          placeholder="e.g. 9812345678"
-                          value={customBuyerContact}
-                          onChange={(e) => setCustomBuyerContact(e.target.value)}
-                          className="w-full bg-white border border-[#D9DEE5] rounded-md p-2 text-xs text-[#1B2430] focus:ring-2 focus:ring-[#1F3A5F]"
-                          required={selectedBuyerId === 'custom'}
-                        />
-                      </div>
+                    <div>
+                      <label className="block text-[11px] font-semibold text-[#5B6675] mb-1">
+                        Buyer Type
+                      </label>
+                      <select
+                        value={customBuyerType}
+                        onChange={(e) => setCustomBuyerType(e.target.value as Offer['buyerType'])}
+                        className="w-full bg-white border border-[#D9DEE5] rounded-md p-2 text-xs text-[#1B2430] focus:ring-2 focus:ring-[#1F3A5F]"
+                      >
+                        <option value="cbg_plant">Bio-CNG (CBG) Plant</option>
+                        <option value="biomass_plant">Biomass Power Plant</option>
+                        <option value="pellet_unit">Biomass Pellet Unit</option>
+                        <option value="residue_buyer">Residue Off-Taker</option>
+                        <option value="aggregator">Straw Aggregator</option>
+                      </select>
                     </div>
                   </div>
                 )}
+
+                {/* Buyer Contact Phone - Always Editable */}
+                <div>
+                  <div className="flex items-center justify-between mb-1">
+                    <label className="block text-[11px] font-semibold text-[#1B2430]">
+                      Buyer Mobile Phone (Fast2SMS Alert Recipient) <span className="text-red-500">*</span>
+                    </label>
+                    <span className="text-[10px] text-[#2E7D32] font-medium">Editable for testing</span>
+                  </div>
+                  <input
+                    type="tel"
+                    maxLength={10}
+                    placeholder="10-digit mobile number (e.g. 9876543210)"
+                    value={buyerContact}
+                    onChange={(e) => setBuyerContact(e.target.value.replace(/\D/g, '').slice(0, 10))}
+                    className="w-full bg-white border border-[#D9DEE5] rounded-md p-2 text-xs text-[#1B2430] focus:ring-2 focus:ring-[#1F3A5F] font-mono"
+                    required
+                  />
+                  <p className="text-[10px] text-[#5B6675] mt-1">
+                    📱 You will receive instant Fast2SMS updates on this number when the farmer accepts or declines this offer.
+                  </p>
+                </div>
 
                 <div className="grid grid-cols-2 gap-3">
                   <div>

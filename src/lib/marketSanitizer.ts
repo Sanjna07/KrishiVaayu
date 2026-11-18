@@ -1,7 +1,7 @@
 import type { Listing, Offer } from '@/types/market';
 import { hashEditToken } from './market';
 
-export interface PublicListing extends Omit<Listing, 'editTokenHash' | 'phone'> {
+export interface PublicListing extends Omit<Listing, 'editTokenHash' | 'rawEditToken' | 'phone'> {
   phone?: string;
   offersCount?: number;
 }
@@ -12,11 +12,12 @@ export interface SanitizedOffer extends Omit<Offer, 'buyerContact'> {
 
 /**
  * Sanitizes a listing for public listing views (browse, search, map).
- * Strictly hides phone, editTokenHash.
+ * Strictly hides phone, editTokenHash, and rawEditToken.
  */
 export function sanitizeListingForPublic(listing: Listing, offersCount = 0): PublicListing {
-  const { editTokenHash, phone, ...rest } = listing;
+  const { editTokenHash, rawEditToken, phone, ...rest } = listing;
   void editTokenHash;
+  void rawEditToken;
   void phone;
   return {
     ...rest,

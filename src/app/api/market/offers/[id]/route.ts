@@ -3,6 +3,7 @@ import { marketRepo } from '@/lib/repo/marketRepo';
 import { transitionListingStatus } from '@/lib/market';
 import { verifyListingToken } from '@/lib/marketSanitizer';
 import { checkRateLimit, getClientIp } from '@/lib/rateLimit';
+import { sendBuyerOfferAcceptedSms, sendBuyerOfferDeclinedSms } from '@/lib/services/smsService';
 
 function extractToken(request: Request, bodyToken?: unknown): string | null {
   if (typeof bodyToken === 'string' && bodyToken.trim()) {
@@ -90,8 +91,20 @@ export async function PATCH(
         }
       }
 
-      const { editTokenHash, ...sanitizedListing } = updatedListing;
+      const { editTokenHash, rawEditToken, ...sanitizedListing } = updatedListing;
       void editTokenHash;
+      void rawEditToken;
+
+      // Dispatch Fast2SMS to buyer: offer was accepted + include farmer's contact
+      if (offer.buyerContact) {
+        void sendBuyerOfferAcceptedSms({
+          buyerPhone: offer.buyerContact,
+          listingId: listing.id,
+          village: listing.village,
+          pricePerQuintal: offer.pricePerQuintal,
+          farmerPhone: listing.phone,
+        });
+      }
 
       return NextResponse.json({
         success: true,
@@ -104,6 +117,16 @@ export async function PATCH(
     const updatedOffer = await marketRepo.updateOffer(offer.id, {
       status: 'declined',
     });
+
+    // Dispatch Fast2SMS to buyer: offer was declined
+    if (offer.buyerContact) {
+      void sendBuyerOfferDeclinedSms({
+        buyerPhone: offer.buyerContact,
+        listingId: listing.id,
+        village: listing.village,
+        pricePerQuintal: offer.pricePerQuintal,
+      });
+    }
 
     return NextResponse.json({
       success: true,

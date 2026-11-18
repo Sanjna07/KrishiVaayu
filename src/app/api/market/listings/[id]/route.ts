@@ -13,6 +13,7 @@ import {
   sanitizeOfferForPublic,
 } from '@/lib/marketSanitizer';
 import { checkRateLimit, getClientIp } from '@/lib/rateLimit';
+import { sendResidueCollectedSms } from '@/lib/services/smsService';
 import type { ListingAction, Listing } from '@/types/market';
 
 function extractToken(request: Request, bodyToken?: unknown): string | null {
@@ -49,8 +50,9 @@ export async function GET(
 
     if (isFarmerOwner) {
       // Owner view: reveal phone and accepted buyer's contact
-      const { editTokenHash, ...ownerListing } = listing;
+      const { editTokenHash, rawEditToken, ...ownerListing } = listing;
       void editTokenHash;
+      void rawEditToken;
 
       const ownerOffers = offers.map((offer) => {
         // Reveal contact if offer was accepted so farmer can coordinate pickup
@@ -180,8 +182,9 @@ export async function PATCH(
       }
 
       const updated = await marketRepo.updateListing(id, partialUpdate);
-      const { editTokenHash, ...sanitized } = updated;
+      const { editTokenHash, rawEditToken, ...sanitized } = updated;
       void editTokenHash;
+      void rawEditToken;
 
       return NextResponse.json({
         success: true,
@@ -205,8 +208,23 @@ export async function PATCH(
       status: nextStatus,
     });
 
-    const { editTokenHash, ...sanitized } = updated;
+    // Dispatch Fast2SMS completion confirmation to both Farmer & Buyer when residue is collected
+    if (nextStatus === 'collected') {
+      const acceptedOfferId = listing.acceptedOfferId || updated.acceptedOfferId;
+      const acceptedOffer = acceptedOfferId ? await marketRepo.getOfferById(acceptedOfferId) : null;
+
+      void sendResidueCollectedSms({
+        farmerPhone: listing.phone,
+        buyerPhone: acceptedOffer?.buyerContact,
+        listingId: listing.id,
+        village: listing.village,
+        quantityQuintals: listing.quantityQuintals,
+      });
+    }
+
+    const { editTokenHash, rawEditToken, ...sanitized } = updated;
     void editTokenHash;
+    void rawEditToken;
 
     return NextResponse.json({
       success: true,

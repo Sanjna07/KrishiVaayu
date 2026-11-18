@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server';
 import { marketRepo } from '@/lib/repo/marketRepo';
 import { validateOfferInput, transitionListingStatus } from '@/lib/market';
 import { checkRateLimit, getClientIp } from '@/lib/rateLimit';
+import { sendFarmerNewOfferSms } from '@/lib/services/smsService';
 
 export async function POST(request: Request) {
   try {
@@ -54,6 +55,19 @@ export async function POST(request: Request) {
         offerId,
       });
       await marketRepo.updateListing(listing.id, { status: nextStatus });
+    }
+
+    // Dispatch Fast2SMS alert to farmer with direct dashboard link
+    if (listing.phone) {
+      void sendFarmerNewOfferSms({
+        farmerPhone: listing.phone,
+        listingId: listing.id,
+        village: listing.village,
+        buyerName: newOffer.buyerName,
+        pricePerQuintal: newOffer.pricePerQuintal,
+        quantityQuintals: listing.quantityQuintals,
+        editToken: listing.rawEditToken,
+      });
     }
 
     return NextResponse.json(
