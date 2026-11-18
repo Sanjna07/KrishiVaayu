@@ -8,6 +8,7 @@ import {
   PUNJAB_DISTRICTS,
   type MarketLang,
 } from '@/lib/marketDict';
+import { useLanguage } from '@/context/LanguageContext';
 import type { StrawForm } from '@/types/market';
 import {
   MapPin,
@@ -30,8 +31,8 @@ function SellFlowForm() {
   const router = useRouter();
   const searchParams = useSearchParams();
 
-  // Language state
-  const [lang, setLang] = useState<MarketLang>('en');
+  // Language state (synced with global site-wide language)
+  const { lang, setLang } = useLanguage();
   const t = marketDict[lang];
 
   // Pre-filled URL query parameters (from WhatsApp farmer alert deep link)

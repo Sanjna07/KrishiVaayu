@@ -4,6 +4,7 @@ import { useCallback, useEffect, useMemo, useState } from 'react';
 import { Navbar } from '@/components/Navbar';
 import { Footer } from '@/components/Footer';
 import { exportToCsv } from '@/lib/csvExport';
+import { useLanguage } from '@/context/LanguageContext';
 import {
   AreaChart, Area, BarChart, Bar,
   XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer,
@@ -175,6 +176,7 @@ function YearPills({
 // ─── Main Trends Page ────────────────────────────────────────────────────────
 
 export default function TrendsPage() {
+  const { t } = useLanguage();
   const [data, setData] = useState<CreamsData | null>(null);
   const [loadingData, setLoadingData] = useState(true);
   const [season, setSeason] = useState<'paddy' | 'wheat'>('paddy');
@@ -328,9 +330,9 @@ export default function TrendsPage() {
         {/* Subheader & Controls */}
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-[#D9DEE5] pb-4">
           <div>
-            <h1 className="text-xl font-bold text-[#1F3A5F]">Historical Crop Residue Fire Trends</h1>
+            <h1 className="text-xl font-bold text-[#1F3A5F]">{t.trends.title}</h1>
             <p className="text-xs text-[#5B6675] mt-0.5">
-              CREAMS / ICAR-IARI multi-year satellite monitoring archive (2020–2025) & NASA FIRMS telemetry.
+              {t.trends.subtitle}
             </p>
           </div>
 
@@ -342,7 +344,7 @@ export default function TrendsPage() {
               title="Download trends data as safe CSV"
             >
               <Download className="w-3.5 h-3.5" />
-              <span>Export CSV</span>
+              <span>{t.trends.exportCsv}</span>
             </button>
           </div>
         </div>
@@ -351,7 +353,7 @@ export default function TrendsPage() {
         <div className="bg-white border border-[#D9DEE5] rounded-lg p-3.5 shadow-xs flex flex-wrap items-center justify-between gap-3">
           {/* Year selector */}
           <div className="flex items-center gap-2">
-            <span className="text-xs font-bold text-[#5B6675] uppercase tracking-wider">Years:</span>
+            <span className="text-xs font-bold text-[#5B6675] uppercase tracking-wider">{t.trends.year}:</span>
             <YearPills
               allYears={allYears}
               selected={selectedYears}
@@ -371,7 +373,7 @@ export default function TrendsPage() {
                     season === s ? 'bg-[#1F3A5F] text-white shadow-xs' : 'text-[#5B6675] hover:text-[#1B2430]'
                   }`}
                 >
-                  {s === 'paddy' ? '🌾 Paddy (Kharif)' : '🌱 Wheat (Rabi)'}
+                  {s === 'paddy' ? `🌾 ${t.trends.paddySeason}` : `🌱 ${t.trends.wheatSeason}`}
                 </button>
               ))}
             </div>

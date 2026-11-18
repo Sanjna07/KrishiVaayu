@@ -18,12 +18,14 @@ import {
   Flag,
   AlertTriangle,
 } from 'lucide-react';
+import { useLanguage } from '@/context/LanguageContext';
 
 interface FarmerDashboardClientProps {
   token: string;
 }
 
 export default function FarmerDashboardClient({ token }: FarmerDashboardClientProps) {
+  const { lang, setLang } = useLanguage();
   const [listing, setListing] = useState<Listing | null>(null);
   const [offers, setOffers] = useState<Offer[]>([]);
   const [loading, setLoading] = useState(true);
@@ -413,6 +415,37 @@ export default function FarmerDashboardClient({ token }: FarmerDashboardClientPr
         </div>
 
         <div className="flex items-center gap-2">
+          {/* Language Switcher */}
+          <div className="flex items-center bg-[#F5F7FA] border border-[#D9DEE5] rounded-md p-0.5 text-xs font-medium">
+            <button
+              type="button"
+              onClick={() => setLang('en')}
+              className={`px-2 py-0.5 rounded transition-colors ${
+                lang === 'en' ? 'bg-[#1F3A5F] text-white font-bold shadow-xs' : 'text-[#5B6675] hover:text-[#1B2430]'
+              }`}
+            >
+              EN
+            </button>
+            <button
+              type="button"
+              onClick={() => setLang('hi')}
+              className={`px-2 py-0.5 rounded transition-colors ${
+                lang === 'hi' ? 'bg-[#1F3A5F] text-white font-bold shadow-xs' : 'text-[#5B6675] hover:text-[#1B2430]'
+              }`}
+            >
+              हिन्दी
+            </button>
+            <button
+              type="button"
+              onClick={() => setLang('pa')}
+              className={`px-2 py-0.5 rounded transition-colors ${
+                lang === 'pa' ? 'bg-[#1F3A5F] text-white font-bold shadow-xs' : 'text-[#5B6675] hover:text-[#1B2430]'
+              }`}
+            >
+              ਪੰਜਾਬੀ
+            </button>
+          </div>
+
           <button
             onClick={handleCopyLink}
             className="px-3 py-1.5 bg-white hover:bg-slate-50 text-[#1F3A5F] text-xs font-semibold rounded-md flex items-center gap-1.5 border border-[#D9DEE5] shadow-xs transition-colors min-h-[36px]"

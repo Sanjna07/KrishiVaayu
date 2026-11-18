@@ -4,6 +4,7 @@ import { useState, useEffect } from 'react';
 import { Modal } from './Modal';
 import type { PublicListing } from '@/lib/marketSanitizer';
 import type { Offer, BuyerProfile } from '@/types/market';
+import { useLanguage } from '@/context/LanguageContext';
 import {
   Calendar,
   Building2,
@@ -64,6 +65,7 @@ export function ListingModal({
   userRole,
   onRoleChange,
 }: ListingModalProps) {
+  const { lang } = useLanguage();
   const [activeTab, setActiveTab] = useState<'details' | 'offers' | 'make_offer'>('details');
   const [offers, setOffers] = useState<Offer[]>([]);
   const [loadingOffers, setLoadingOffers] = useState(false);
@@ -273,7 +275,7 @@ export function ListingModal({
                 : 'border-transparent text-[#5B6675] hover:text-[#1B2430]'
             }`}
           >
-            Listing Details
+            {lang === 'pa' ? 'ਲਿਸਟਿੰਗ ਵੇਰਵੇ' : lang === 'hi' ? 'लिस्टिंग विवरण' : 'Listing Details'}
           </button>
           <button
             type="button"
@@ -284,7 +286,7 @@ export function ListingModal({
                 : 'border-transparent text-[#5B6675] hover:text-[#1B2430]'
             }`}
           >
-            <span>Offers</span>
+            <span>{lang === 'pa' ? 'ਪੇਸ਼ਕਸ਼ਾਂ' : lang === 'hi' ? 'प्रस्ताव' : 'Offers'}</span>
             <span className="px-1.5 py-0.2 rounded-full text-[10px] bg-slate-100 text-[#5B6675]">
               {offers.length}
             </span>
@@ -298,7 +300,7 @@ export function ListingModal({
                 : 'border-transparent text-[#5B6675] hover:text-[#1B2430]'
             }`}
           >
-            Make an Offer
+            {lang === 'pa' ? 'ਬੋਲੀ ਲਗਾਓ' : lang === 'hi' ? 'बोली लगाएं' : 'Make an Offer'}
           </button>
         </div>
 

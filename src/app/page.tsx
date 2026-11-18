@@ -8,6 +8,7 @@ import { Footer } from '@/components/Footer';
 import type { MatchesApiResponse, DistrictSummary } from '@/types';
 import { getRiskBadgeClasses } from '@/lib/theme';
 import { exportToCsv } from '@/lib/csvExport';
+import { useLanguage } from '@/context/LanguageContext';
 import {
   Flame,
   AlertTriangle,
@@ -21,6 +22,7 @@ import {
 } from 'lucide-react';
 
 export default function HomePage() {
+  const { t } = useLanguage();
   const [data, setData] = useState<MatchesApiResponse | null>(null);
   const [loading, setLoading] = useState(true);
   const [, setError] = useState<string | null>(null);
@@ -120,14 +122,14 @@ export default function HomePage() {
                 <Flame className="w-4 h-4" />
               </div>
               <div className="min-w-0">
-                <div className="text-[10px] uppercase font-bold text-[#5B6675] tracking-wider truncate">Hotspots Detected</div>
+                <div className="text-[10px] uppercase font-bold text-[#5B6675] tracking-wider truncate">{t.home.hotspotsDetected}</div>
                 <div className="text-base sm:text-lg font-bold text-[#1B2430] flex items-center gap-1.5">
                   {loading ? (
                     <span className="w-10 h-4 bg-slate-200 rounded animate-pulse inline-block" />
                   ) : (
                     <>
                       <span>{data?.totalHotspots ?? 0}</span>
-                      <span className="text-[10px] text-[#C62828] font-medium">Active VIIRS</span>
+                      <span className="text-[10px] text-[#C62828] font-medium">{t.home.activeViirs}</span>
                     </>
                   )}
                 </div>
@@ -140,14 +142,14 @@ export default function HomePage() {
                 <AlertTriangle className="w-4 h-4" />
               </div>
               <div className="min-w-0">
-                <div className="text-[10px] uppercase font-bold text-[#5B6675] tracking-wider truncate">High Threat Districts</div>
+                <div className="text-[10px] uppercase font-bold text-[#5B6675] tracking-wider truncate">{t.home.highThreatDistricts}</div>
                 <div className="text-base sm:text-lg font-bold text-[#1B2430] flex items-center gap-1.5">
                   {loading ? (
                     <span className="w-10 h-4 bg-slate-200 rounded animate-pulse inline-block" />
                   ) : (
                     <>
                       <span>{data?.highRiskDistricts ?? 0}</span>
-                      <span className="text-[10px] text-[#E65100] font-medium">(Score ≥ 51)</span>
+                      <span className="text-[10px] text-[#E65100] font-medium">{t.home.scoreThreshold}</span>
                     </>
                   )}
                 </div>
@@ -160,7 +162,7 @@ export default function HomePage() {
                 <Wind className="w-4 h-4" />
               </div>
               <div className="min-w-0">
-                <div className="text-[10px] uppercase font-bold text-[#5B6675] tracking-wider truncate">Prevailing Wind (10m)</div>
+                <div className="text-[10px] uppercase font-bold text-[#5B6675] tracking-wider truncate">{t.home.prevailingWind}</div>
                 <div className="text-base sm:text-lg font-bold text-[#1B2430] flex items-center gap-1.5 truncate">
                   {loading ? (
                     <span className="w-12 h-4 bg-slate-200 rounded animate-pulse inline-block" />
@@ -174,7 +176,7 @@ export default function HomePage() {
                             : 'text-slate-700 border-slate-300 bg-slate-100'
                         }`}
                       >
-                        {data?.wind.directionCardinal} {data?.wind.isTowardsDelhi ? '→ NCR' : ''}
+                        {data?.wind.directionCardinal} {data?.wind.isTowardsDelhi ? t.home.towardsNcr : ''}
                       </span>
                     </>
                   )}
@@ -188,10 +190,10 @@ export default function HomePage() {
                 <CheckCircle2 className="w-4 h-4" />
               </div>
               <div className="min-w-0">
-                <div className="text-[10px] uppercase font-bold text-[#5B6675] tracking-wider truncate">Clean Alternatives</div>
+                <div className="text-[10px] uppercase font-bold text-[#5B6675] tracking-wider truncate">{t.home.cleanAlternatives}</div>
                 <div className="text-base sm:text-lg font-bold text-[#1B2430] flex items-center gap-1.5">
-                  <span>29 Facilities</span>
-                  <span className="text-[10px] font-medium text-[#2E7D32]">CBG & CHCs</span>
+                  <span>{t.home.facilitiesCount}</span>
+                  <span className="text-[10px] font-medium text-[#2E7D32]">{t.home.facilitiesType}</span>
                 </div>
               </div>
             </div>
@@ -202,15 +204,15 @@ export default function HomePage() {
             {data?.isUsingSnapshot && (
               <span className="text-[11px] text-amber-800 bg-amber-50 border border-amber-300 px-2 py-1 rounded-md flex items-center gap-1">
                 <Database className="w-3.5 h-3.5 text-amber-600" />
-                <span>Cached Snapshot ({data.snapshotDate ?? '2026-10-30'})</span>
+                <span>{t.home.cachedSnapshot} ({data.snapshotDate ?? '2026-10-30'})</span>
               </span>
             )}
 
             <button
               onClick={fetchData}
               disabled={loading}
-              aria-label="Refresh live data"
-              title="Refresh live data"
+              aria-label={t.home.refreshTooltip}
+              title={t.home.refreshTooltip}
               className="p-2 rounded-md bg-white hover:bg-slate-100 border border-[#D9DEE5] text-[#5B6675] hover:text-[#1F3A5F] transition-colors focus-visible:ring-2 focus-visible:ring-[#1F3A5F] disabled:opacity-50"
             >
               <RefreshCw className={`w-4 h-4 ${loading ? 'animate-spin text-[#1F3A5F]' : ''}`} />
@@ -227,7 +229,7 @@ export default function HomePage() {
             activeMobileTab === 'map' ? 'border-[#1F3A5F] text-[#1F3A5F]' : 'border-transparent text-[#5B6675]'
           }`}
         >
-          Risk Map
+          {t.home.riskMapTab}
         </button>
         <button
           onClick={() => setActiveMobileTab('list')}
@@ -235,7 +237,7 @@ export default function HomePage() {
             activeMobileTab === 'list' ? 'border-[#1F3A5F] text-[#1F3A5F]' : 'border-transparent text-[#5B6675]'
           }`}
         >
-          District Ranking ({filteredDistricts.length})
+          {t.home.districtRankingTab} ({filteredDistricts.length})
         </button>
       </div>
 
@@ -253,7 +255,7 @@ export default function HomePage() {
               <Search className="w-4 h-4 text-[#8892A0] absolute left-3 top-2.5" />
               <input
                 type="text"
-                placeholder="Search district or state..."
+                placeholder={t.home.searchPlaceholder}
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
                 className="w-full bg-white border border-[#D9DEE5] rounded-md pl-9 pr-3 py-1.5 text-xs text-[#1B2430] placeholder-[#8892A0] focus:ring-2 focus:ring-[#1F3A5F] focus:border-[#1F3A5F] outline-hidden"
@@ -271,13 +273,13 @@ export default function HomePage() {
                       : 'bg-white border border-[#D9DEE5] text-[#5B6675] hover:text-[#1B2430]'
                   }`}
                 >
-                  {s === 'ALL' ? 'All Districts' : s}
+                  {s === 'ALL' ? t.home.allDistricts : s}
                 </button>
               ))}
             </div>
             <div className="flex items-center justify-between pt-1">
               <span className="text-[11px] text-[#5B6675] font-medium">
-                Showing {filteredDistricts.length} districts
+                {t.home.showingDistricts} {filteredDistricts.length} {t.home.districtsWord}
               </span>
               <button
                 type="button"
@@ -286,7 +288,7 @@ export default function HomePage() {
                 title="Export filtered districts to safe CSV"
               >
                 <Download className="w-3.5 h-3.5" />
-                <span>Export CSV</span>
+                <span>{t.home.exportCsv}</span>
               </button>
             </div>
           </div>
@@ -301,8 +303,8 @@ export default function HomePage() {
               </div>
             ) : filteredDistricts.length === 0 ? (
               <div className="p-8 text-center text-xs text-[#5B6675] space-y-1">
-                <p className="font-semibold text-[#1B2430]">No matching districts found</p>
-                <p>Adjust your search query or state filter.</p>
+                <p className="font-semibold text-[#1B2430]">{t.home.noDistrictsFound}</p>
+                <p>{t.home.adjustSearch}</p>
               </div>
             ) : (
               filteredDistricts.map((d) => {
@@ -322,11 +324,11 @@ export default function HomePage() {
                       </div>
 
                       <div className="flex items-center gap-3 text-[11px] text-[#5B6675]">
-                        <span>{d.fireCount} fires</span>
+                        <span>{d.fireCount} {t.home.fires}</span>
                         <span>·</span>
-                        <span>{d.distanceToDelhiKm} km to NCR</span>
+                        <span>{d.distanceToDelhiKm} {t.home.kmToNcr}</span>
                         <span>·</span>
-                        <span>{Math.round(d.windAlignment * 100)}% downwind</span>
+                        <span>{Math.round(d.windAlignment * 100)}% {t.home.downwind}</span>
                       </div>
                     </div>
 

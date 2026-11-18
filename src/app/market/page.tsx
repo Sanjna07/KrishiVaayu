@@ -6,6 +6,7 @@ import { Navbar } from '@/components/Navbar';
 import { MarketMap } from '@/components/MarketMap';
 import { ListingModal } from '@/components/ListingModal';
 import { PUNJAB_DISTRICTS } from '@/lib/marketDict';
+import { useLanguage } from '@/context/LanguageContext';
 import type { PublicListing } from '@/lib/marketSanitizer';
 import {
   Filter,
@@ -25,6 +26,7 @@ interface NearestBuyer {
 }
 
 export default function MarketBrowsePage() {
+  const { t } = useLanguage();
   const [listings, setListings] = useState<PublicListing[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -106,15 +108,15 @@ export default function MarketBrowsePage() {
   const getStatusBadge = (status: string) => {
     switch (status) {
       case 'listed':
-        return <span className="px-2.5 py-0.5 rounded-full text-xs font-semibold bg-green-50 text-green-700 border border-green-200">Open</span>;
+        return <span className="px-2.5 py-0.5 rounded-full text-xs font-semibold bg-green-50 text-green-700 border border-green-200">{t.market.statusOpen}</span>;
       case 'offered':
-        return <span className="px-2.5 py-0.5 rounded-full text-xs font-semibold bg-blue-50 text-blue-700 border border-blue-200">Offered</span>;
+        return <span className="px-2.5 py-0.5 rounded-full text-xs font-semibold bg-blue-50 text-blue-700 border border-blue-200">{t.market.statusOffered}</span>;
       case 'accepted':
-        return <span className="px-2.5 py-0.5 rounded-full text-xs font-semibold bg-amber-50 text-amber-800 border border-amber-200">Accepted</span>;
+        return <span className="px-2.5 py-0.5 rounded-full text-xs font-semibold bg-amber-50 text-amber-800 border border-amber-200">{t.market.statusAccepted}</span>;
       case 'pickup_scheduled':
-        return <span className="px-2.5 py-0.5 rounded-full text-xs font-semibold bg-purple-50 text-purple-700 border border-purple-200">Scheduled</span>;
+        return <span className="px-2.5 py-0.5 rounded-full text-xs font-semibold bg-purple-50 text-purple-700 border border-purple-200">{t.market.statusScheduled}</span>;
       case 'collected':
-        return <span className="px-2.5 py-0.5 rounded-full text-xs font-semibold bg-slate-100 text-slate-700 border border-slate-300">Collected</span>;
+        return <span className="px-2.5 py-0.5 rounded-full text-xs font-semibold bg-slate-100 text-slate-700 border border-slate-300">{t.market.statusCollected}</span>;
       default:
         return <span className="px-2.5 py-0.5 rounded-full text-xs font-semibold bg-slate-100 text-slate-600">{status}</span>;
     }
@@ -129,9 +131,9 @@ export default function MarketBrowsePage() {
         {/* Subheader & Action Row */}
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-[#D9DEE5] pb-4">
           <div>
-            <h1 className="text-xl font-bold text-[#1F3A5F]">Paddy Straw Residue Market</h1>
+            <h1 className="text-xl font-bold text-[#1F3A5F]">{t.market.title}</h1>
             <p className="text-xs text-[#5B6675] mt-0.5">
-              Discover farmer crop residue listings and connect with clean industrial off-takers across Punjab.
+              {t.market.subtitle}
             </p>
           </div>
 
@@ -141,7 +143,7 @@ export default function MarketBrowsePage() {
               className="px-4 py-2 bg-[#2E7D32] hover:bg-[#236327] text-white text-xs sm:text-sm font-semibold rounded-md flex items-center gap-1.5 transition-colors shadow-xs"
             >
               <PlusCircle className="w-4 h-4" />
-              <span>List Stubble for Free</span>
+              <span>{t.market.listStubbleBtn}</span>
             </Link>
           </div>
         </div>
@@ -150,7 +152,7 @@ export default function MarketBrowsePage() {
         <div className="bg-white border border-[#D9DEE5] rounded-lg p-3.5 flex flex-wrap items-center justify-between gap-3 shadow-xs">
           <div className="flex items-center gap-2 text-xs font-bold text-[#1F3A5F] uppercase tracking-wider">
             <Filter className="w-4 h-4 text-[#1F3A5F]" />
-            <span>Filter Feed:</span>
+            <span>{t.market.filterFeed}</span>
           </div>
 
           <div className="flex flex-wrap items-center gap-2.5 text-xs">
@@ -160,7 +162,7 @@ export default function MarketBrowsePage() {
               onChange={(e) => setFilterDistrict(e.target.value)}
               className="bg-white border border-[#D9DEE5] rounded-md px-3 py-1.5 text-xs text-[#1B2430] focus:ring-2 focus:ring-[#1F3A5F]"
             >
-              <option value="All">All Districts</option>
+              <option value="All">{t.market.allDistricts}</option>
               {PUNJAB_DISTRICTS.map((d) => (
                 <option key={d} value={d}>{d}</option>
               ))}
@@ -172,9 +174,9 @@ export default function MarketBrowsePage() {
               onChange={(e) => setFilterForm(e.target.value)}
               className="bg-white border border-[#D9DEE5] rounded-md px-3 py-1.5 text-xs text-[#1B2430] focus:ring-2 focus:ring-[#1F3A5F]"
             >
-              <option value="All">All Straw Forms</option>
-              <option value="baled">📦 Baled Bundles</option>
-              <option value="loose">🌾 Loose Straw</option>
+              <option value="All">{t.market.allStrawForms}</option>
+              <option value="baled">{t.market.formBaled}</option>
+              <option value="loose">{t.market.formLoose}</option>
             </select>
 
             {/* Status Filter */}
@@ -183,12 +185,12 @@ export default function MarketBrowsePage() {
               onChange={(e) => setFilterStatus(e.target.value)}
               className="bg-white border border-[#D9DEE5] rounded-md px-3 py-1.5 text-xs text-[#1B2430] focus:ring-2 focus:ring-[#1F3A5F]"
             >
-              <option value="All">All Statuses</option>
-              <option value="listed">Open</option>
-              <option value="offered">Offered</option>
-              <option value="accepted">Accepted</option>
-              <option value="pickup_scheduled">Scheduled</option>
-              <option value="collected">Collected</option>
+              <option value="All">{t.market.allStatuses}</option>
+              <option value="listed">{t.market.statusOpen}</option>
+              <option value="offered">{t.market.statusOffered}</option>
+              <option value="accepted">{t.market.statusAccepted}</option>
+              <option value="pickup_scheduled">{t.market.statusScheduled}</option>
+              <option value="collected">{t.market.statusCollected}</option>
             </select>
           </div>
         </div>
@@ -209,13 +211,13 @@ export default function MarketBrowsePage() {
 
             {!loading && listings.length === 0 && (
               <div className="bg-white border border-[#D9DEE5] rounded-lg p-8 text-center text-xs space-y-2">
-                <p className="font-semibold text-[#1B2430]">No listings match the selected filters.</p>
-                <p className="text-[#5B6675]">Try resetting your district or straw form filters.</p>
+                <p className="font-semibold text-[#1B2430]">{t.market.noListings}</p>
+                <p className="text-[#5B6675]">{t.market.resetFilters}</p>
                 <button
                   onClick={() => { setFilterDistrict('All'); setFilterForm('All'); setFilterStatus('All'); }}
                   className="mt-2 px-3 py-1.5 bg-[#1F3A5F] text-white rounded text-xs font-semibold"
                 >
-                  Reset Filters
+                  {t.market.resetFilters}
                 </button>
               </div>
             )}
@@ -239,7 +241,7 @@ export default function MarketBrowsePage() {
                       )}
                     </div>
                     <p className="text-[11px] text-[#5B6675] mt-0.5">
-                      Available: {l.availability.startDate} to {l.availability.endDate}
+                      {l.availability.startDate} — {l.availability.endDate}
                     </p>
                   </div>
                   {getStatusBadge(l.status)}
@@ -247,29 +249,29 @@ export default function MarketBrowsePage() {
 
                 <div className="grid grid-cols-3 gap-2 py-2 border-y border-[#E5E9F0] text-xs">
                   <div>
-                    <span className="text-[#5B6675] block text-[11px]">Residue Available</span>
-                    <span className="font-bold text-emerald-800 text-sm">{l.quantityQuintals} Quintals</span>
+                    <span className="text-[#5B6675] block text-[11px]">{t.market.residueAvailable}</span>
+                    <span className="font-bold text-emerald-800 text-sm">{l.quantityQuintals} {t.market.perQtl}</span>
                   </div>
                   <div>
-                    <span className="text-[#5B6675] block text-[11px]">Residue Form</span>
+                    <span className="text-[#5B6675] block text-[11px]">{t.market.residueForm}</span>
                     <span className="font-semibold text-[#1B2430]">
-                      {l.form === 'baled' ? '📦 Baled' : '🌾 Loose'}
+                      {l.form === 'baled' ? t.market.formBaled : t.market.formLoose}
                     </span>
                   </div>
                   <div>
-                    <span className="text-[#5B6675] block text-[11px]">Asking Price</span>
+                    <span className="text-[#5B6675] block text-[11px]">{t.market.askingPrice}</span>
                     <span className="font-semibold text-[#1F3A5F]">
-                      {l.askingPricePerQuintal ? `₹${l.askingPricePerQuintal} / Qtl` : 'Open'}
+                      {l.askingPricePerQuintal ? `₹${l.askingPricePerQuintal} / ${t.market.perQtl}` : t.market.openPrice}
                     </span>
                   </div>
                 </div>
 
                 <div className="flex items-center justify-between pt-0.5 text-[11px]">
                   <span className="text-[#5B6675]">
-                    {l.offersCount !== undefined ? `${l.offersCount} buyer offers` : 'View offers & details'}
+                    {l.offersCount !== undefined ? `${l.offersCount} ${t.market.viewOffers}` : t.market.viewOffers}
                   </span>
                   <span className="font-semibold text-[#1F3A5F] flex items-center gap-1">
-                    <span>View Details & Bid</span>
+                    <span>{t.market.viewDetailsBid}</span>
                     <ExternalLink className="w-3.5 h-3.5" />
                   </span>
                 </div>
@@ -291,9 +293,9 @@ export default function MarketBrowsePage() {
             <div className="bg-white border border-[#D9DEE5] rounded-lg p-4 shadow-xs space-y-3">
               <div className="flex items-center justify-between border-b border-[#E5E9F0] pb-2">
                 <span className="font-bold text-xs text-[#1F3A5F] uppercase tracking-wider">
-                  Nearby Clean Alternatives
+                  {t.market.cleanAlternativesSidebar}
                 </span>
-                <span className="text-[11px] text-[#5B6675]">State Registry</span>
+                <span className="text-[11px] text-[#5B6675]">{t.market.stateRegistry}</span>
               </div>
 
               <div className="space-y-2">

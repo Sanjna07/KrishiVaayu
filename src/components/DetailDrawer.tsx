@@ -5,6 +5,7 @@ import Link from 'next/link';
 import type { DistrictSummary } from '@/types';
 import { generateFarmerMessages } from '@/lib/messages';
 import { getRiskBadgeClasses } from '@/lib/theme';
+import { useLanguage } from '@/context/LanguageContext';
 import {
   X,
   Copy,
@@ -24,9 +25,15 @@ interface DetailDrawerProps {
 }
 
 export function DetailDrawer({ district, onClose }: DetailDrawerProps) {
-  const [selectedLang, setSelectedLang] = useState<'en' | 'hi' | 'pa'>('en');
+  const { lang, t } = useLanguage();
+  const [selectedLang, setSelectedLang] = useState<'en' | 'hi' | 'pa'>(lang);
   const [copied, setCopied] = useState(false);
   const [showFormulaInfo, setShowFormulaInfo] = useState(false);
+
+  // Sync with global language changes
+  useEffect(() => {
+    setSelectedLang(lang);
+  }, [lang]);
 
   // Close on ESC
   useEffect(() => {
@@ -123,7 +130,7 @@ export function DetailDrawer({ district, onClose }: DetailDrawerProps) {
           <div className="bg-[#F5F7FA] border border-[#D9DEE5] rounded-lg p-4">
             <div className="flex items-center justify-between mb-2">
               <span className="text-xs font-semibold text-[#5B6675] uppercase tracking-wider">
-                Delhi Air Quality Risk Assessment
+                {t.drawer.riskAssessment}
               </span>
               <div className="flex items-center gap-2">
                 <span
@@ -158,15 +165,15 @@ export function DetailDrawer({ district, onClose }: DetailDrawerProps) {
             {/* Risk Factors Breakdown */}
             <div className="grid grid-cols-3 gap-2 pt-2 border-t border-[#E5E9F0] text-center">
               <div>
-                <span className="block text-xs text-[#5B6675]">Active Fires</span>
+                <span className="block text-xs text-[#5B6675]">{t.drawer.activeFires}</span>
                 <span className="text-base font-bold text-[#C62828]">{district.fireCount}</span>
               </div>
               <div>
-                <span className="block text-xs text-[#5B6675]">Distance to NCR</span>
+                <span className="block text-xs text-[#5B6675]">{t.drawer.distanceNcr}</span>
                 <span className="text-base font-bold text-[#1B2430]">{district.distanceToDelhiKm} km</span>
               </div>
               <div>
-                <span className="block text-xs text-[#5B6675]">Downwind Vector</span>
+                <span className="block text-xs text-[#5B6675]">{t.drawer.plumeAlignment}</span>
                 <span className="text-base font-bold text-[#E65100]">
                   {Math.round(district.windAlignment * 100)}%
                 </span>
@@ -195,7 +202,7 @@ export function DetailDrawer({ district, onClose }: DetailDrawerProps) {
           {/* Nearest Clean Alternatives Section */}
           <div className="space-y-3">
             <h3 className="text-xs font-bold uppercase tracking-wider text-[#5B6675]">
-              Nearest Verified Clean Alternatives
+              {t.drawer.recommendedAlternatives}
             </h3>
 
             <div className="space-y-2">
@@ -231,7 +238,7 @@ export function DetailDrawer({ district, onClose }: DetailDrawerProps) {
           <div className="space-y-3">
             <div className="flex items-center justify-between">
               <h3 className="text-xs font-bold uppercase tracking-wider text-[#5B6675]">
-                Farmer Advisory Generator
+                {t.drawer.farmerAdvisory}
               </h3>
               {/* Language Pills */}
               <div className="flex gap-1 bg-[#F5F7FA] border border-[#D9DEE5] p-0.5 rounded-md">
@@ -279,7 +286,7 @@ export function DetailDrawer({ district, onClose }: DetailDrawerProps) {
                 className="flex-1 flex items-center justify-center gap-1.5 py-2 px-3 rounded-md bg-[#1F3A5F] hover:bg-[#162C49] text-white text-xs font-semibold transition-colors focus-visible:ring-2 focus-visible:ring-[#1F3A5F]"
               >
                 {copied ? <Check className="w-4 h-4 text-emerald-400" /> : <Copy className="w-4 h-4" />}
-                <span>{copied ? 'Copied Advisory!' : 'Copy Advisory'}</span>
+                <span>{copied ? t.drawer.advisoryCopied : t.drawer.copyAdvisory}</span>
               </button>
 
               <button
@@ -300,7 +307,7 @@ export function DetailDrawer({ district, onClose }: DetailDrawerProps) {
                 className="flex items-center justify-center gap-1.5 py-2 px-3 rounded-md bg-[#2E7D32] hover:bg-[#236327] text-white text-xs font-semibold transition-colors focus-visible:ring-2 focus-visible:ring-[#2E7D32]"
               >
                 <Share2 className="w-4 h-4" />
-                <span>Share on WhatsApp</span>
+                <span>{t.drawer.sendWhatsApp}</span>
               </button>
             </div>
           </div>

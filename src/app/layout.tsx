@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import "./globals.css";
+import { LanguageProvider } from "@/context/LanguageContext";
 
 export const metadata: Metadata = {
   title: "KrishiVayu (कृषिवायु) — Burn Alert to Clean Buyer Match",
@@ -19,7 +20,9 @@ export default function RootLayout({
         <link rel="stylesheet" href="https://unpkg.com/maplibre-gl@5/dist/maplibre-gl.css" crossOrigin="anonymous" />
       </head>
       <body className="min-h-full flex flex-col bg-[#F5F7FA] text-[#1B2430]">
-        {children}
+        <LanguageProvider>
+          {children}
+        </LanguageProvider>
       </body>
     </html>
   );

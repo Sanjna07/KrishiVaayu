@@ -1,37 +1,18 @@
 'use client';
 
-import { useState } from 'react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-
-const LINKS = [
-  { href: '/', label: 'Alert & Match', labelHi: 'अलर्ट व विकल्प', labelPa: 'ਅਲਰਟ ਅਤੇ ਬਦਲ' },
-  { href: '/market', label: 'Residue Market', labelHi: 'पराली बाजार', labelPa: 'ਪਰਾਲੀ ਬਾਜ਼ਾਰ' },
-  { href: '/trends', label: 'Historical Trends', labelHi: 'ऐतिहासिक रुझान', labelPa: 'ਇਤਿਹਾਸਕ ਰੁਝਾਨ' },
-];
+import { useLanguage } from '@/context/LanguageContext';
 
 export function Navbar() {
   const path = usePathname();
-  const [lang, setLang] = useState<'en' | 'hi' | 'pa'>(() => {
-    if (typeof window === 'undefined') return 'en';
-    try {
-      const saved = localStorage.getItem('krishivayu_lang');
-      if (saved === 'hi' || saved === 'pa') return saved;
-    } catch {
-      // ignore
-    }
-    return 'en';
-  });
+  const { lang, setLang, t } = useLanguage();
 
-  const handleLangChange = (newLang: 'en' | 'hi' | 'pa') => {
-    setLang(newLang);
-    try {
-      localStorage.setItem('krishivayu_lang', newLang);
-      window.dispatchEvent(new CustomEvent('krishivayu-lang-changed', { detail: newLang }));
-    } catch {
-      // ignore
-    }
-  };
+  const LINKS = [
+    { href: '/', label: t.nav.alertMatch },
+    { href: '/market', label: t.nav.residueMarket },
+    { href: '/trends', label: t.nav.historicalTrends },
+  ];
 
   return (
     <header className="sticky top-0 z-50 bg-white border-b border-[#D9DEE5] shadow-xs">
@@ -50,14 +31,14 @@ export function Navbar() {
             <div className="flex flex-col">
               <div className="flex items-center gap-2">
                 <span className="font-bold text-lg text-[#1F3A5F] tracking-tight group-hover:text-[#162C49]">
-                  KrishiVayu
+                  {t.nav.brandName}
                 </span>
                 <span className="text-xs text-[#5B6675] font-medium hidden sm:inline">
                   (कृषिवायु)
                 </span>
               </div>
               <span className="text-[11px] text-[#5B6675] hidden md:inline leading-none">
-                Burn Alert to Clean Residue Market
+                {t.nav.brandTagline}
               </span>
             </div>
           </Link>
@@ -66,7 +47,6 @@ export function Navbar() {
           <nav className="flex items-center gap-1 sm:gap-2 h-full" aria-label="Primary Portal Navigation">
             {LINKS.map((l) => {
               const active = path === l.href;
-              const displayLabel = lang === 'hi' ? l.labelHi : lang === 'pa' ? l.labelPa : l.label;
               return (
                 <Link
                   key={l.href}
@@ -78,23 +58,18 @@ export function Navbar() {
                   }`}
                   aria-current={active ? 'page' : undefined}
                 >
-                  {displayLabel}
+                  {l.label}
                 </Link>
               );
             })}
           </nav>
 
-          {/* Site-wide Language Switcher & Subtle Feed Status */}
+          {/* Site-wide Language Switcher */}
           <div className="flex items-center gap-3">
-            <div className="hidden lg:flex items-center gap-1.5 text-[11px] text-[#5B6675] border-r border-[#D9DEE5] pr-3">
-              <span className="w-2 h-2 rounded-full bg-[#2E7D32]" />
-              <span>NASA VIIRS · Open-Meteo</span>
-            </div>
-
             <div className="flex items-center bg-[#F5F7FA] border border-[#D9DEE5] rounded-md p-0.5 text-xs font-medium" role="group" aria-label="Language selection">
               <button
                 type="button"
-                onClick={() => handleLangChange('en')}
+                onClick={() => setLang('en')}
                 className={`px-2 py-1 rounded transition-colors ${
                   lang === 'en'
                     ? 'bg-white text-[#1F3A5F] font-bold shadow-xs'
@@ -105,7 +80,7 @@ export function Navbar() {
               </button>
               <button
                 type="button"
-                onClick={() => handleLangChange('hi')}
+                onClick={() => setLang('hi')}
                 className={`px-2 py-1 rounded transition-colors ${
                   lang === 'hi'
                     ? 'bg-white text-[#1F3A5F] font-bold shadow-xs'
@@ -116,7 +91,7 @@ export function Navbar() {
               </button>
               <button
                 type="button"
-                onClick={() => handleLangChange('pa')}
+                onClick={() => setLang('pa')}
                 className={`px-2 py-1 rounded transition-colors ${
                   lang === 'pa'
                     ? 'bg-white text-[#1F3A5F] font-bold shadow-xs'
