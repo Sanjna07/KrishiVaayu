@@ -80,7 +80,7 @@ export interface CreateListingInput {
   startDate: string;
   endDate: string;
   askingPricePerQuintal?: number;
-  phone?: string;
+  phone: string;
   isDemo?: boolean;
 }
 

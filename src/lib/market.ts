@@ -13,8 +13,11 @@ import type {
  * Accepts optional +91 or 0 prefixes.
  * Returns normalized 10-digit string, or throws Error.
  */
-export function validatePhone(phone: unknown): string | undefined {
+export function validatePhone(phone: unknown, required = false): string | undefined {
   if (phone === undefined || phone === null || phone === '') {
+    if (required) {
+      throw new Error('Farmer mobile phone number is required');
+    }
     return undefined;
   }
   if (typeof phone !== 'string') {
@@ -134,7 +137,10 @@ export function validateListingInput(raw: unknown): CreateListingInput {
   const quantityQuintals = validateQuantity(data.quantityQuintals);
   const { startDate, endDate } = validateDateRange(data.startDate, data.endDate);
   const askingPricePerQuintal = validatePrice(data.askingPricePerQuintal);
-  const phone = validatePhone(data.phone);
+  const phone = validatePhone(data.phone, true);
+  if (!phone) {
+    throw new Error('Farmer mobile phone number is required');
+  }
 
   return {
     village: data.village.trim().slice(0, 100),

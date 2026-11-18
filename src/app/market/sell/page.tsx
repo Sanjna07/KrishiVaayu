@@ -98,6 +98,20 @@ function SellFlowForm() {
     setIsSubmitting(true);
 
     try {
+      const cleanPhone = phone.trim().replace(/[\s\-\(\)]/g, '');
+      const phoneMatch = cleanPhone.match(/^(?:\+91|91|0)?([6-9]\d{9})$/);
+      if (!phoneMatch) {
+        setErrorMsg(
+          lang === 'pa'
+            ? 'ਕਿਰਪਾ ਕਰਕੇ 10 ਅੰਕਾਂ ਦਾ ਜਾਇਜ਼ ਭਾਰਤੀ ਮੋਬਾਈਲ ਨੰਬਰ ਦਰਜ ਕਰੋ (6-9 ਤੋਂ ਸ਼ੁਰੂ)।'
+            : lang === 'hi'
+            ? 'कृपया 10 अंकों का वैध भारतीय मोबाइल नंबर दर्ज करें (6-9 से शुरू)।'
+            : 'Please enter a valid 10-digit Indian mobile number starting with 6, 7, 8, or 9.'
+        );
+        setIsSubmitting(false);
+        return;
+      }
+
       const payload = {
         village: village.trim(),
         district: district.trim(),
@@ -107,7 +121,7 @@ function SellFlowForm() {
         startDate,
         endDate,
         askingPricePerQuintal: askingPrice ? Number(askingPrice) : undefined,
-        phone: phone.trim() ? phone.trim() : undefined,
+        phone: phoneMatch[1],
       };
 
       const res = await fetch('/api/market/listings', {
@@ -481,20 +495,21 @@ function SellFlowForm() {
 
               {/* Phone & Privacy Notice */}
               <div>
-                <label className="block text-sm font-medium text-slate-300 mb-1">
+                <label className="block text-xs font-bold text-[#1F3A5F] mb-1">
                   {t.optionalPhoneLabel}
                 </label>
                 <div className="relative">
-                  <Phone className="w-4 h-4 text-[#8892A0] absolute left-3.5 top-4" />
+                  <Phone className="w-4 h-4 text-[#5B6675] absolute left-3.5 top-3.5" />
                   <input
                     type="tel"
-                    placeholder="10-digit mobile number"
+                    required
+                    placeholder="e.g. 9876543210"
                     value={phone}
                     onChange={(e) => setPhone(e.target.value)}
-                    className="w-full min-h-[48px] bg-[#F5F7FA] border border-[#D9DEE5] rounded-xl pl-10 pr-3.5 py-2.5 text-[#1B2430] placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-emerald-500 text-base"
+                    className="w-full min-h-[44px] bg-[#F5F7FA] border border-[#D9DEE5] rounded-lg pl-10 pr-3.5 py-2 text-[#1B2430] placeholder-[#8892A0] focus:outline-none focus:ring-2 focus:ring-[#1F3A5F] text-sm font-semibold"
                   />
                 </div>
-                <p className="mt-1.5 text-xs text-cyan-300 bg-cyan-950/40 border border-cyan-500/20 rounded-lg p-2 leading-relaxed">
+                <p className="mt-1.5 text-xs text-[#1F3A5F] bg-blue-50/70 border border-blue-200 rounded-lg p-2.5 leading-relaxed">
                   {t.phonePrivacyNotice}
                 </p>
               </div>

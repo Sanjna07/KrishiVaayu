@@ -22,6 +22,8 @@ assert.strictEqual(validatePhone('09876543210'), '9876543210');
 assert.strictEqual(validatePhone(' 98765-43210 '), '9876543210');
 assert.strictEqual(validatePhone(undefined), undefined);
 assert.strictEqual(validatePhone(''), undefined);
+assert.throws(() => validatePhone(undefined, true), /Farmer mobile phone number is required/);
+assert.throws(() => validatePhone('', true), /Farmer mobile phone number is required/);
 
 assert.throws(() => validatePhone('1234567890'), /Invalid Indian mobile phone number/);
 assert.throws(() => validatePhone('98765'), /Invalid Indian mobile phone number/);
@@ -128,6 +130,20 @@ assert.strictEqual(validListing.village, 'Bhawanigarh');
 assert.strictEqual(validListing.quantityQuintals, 150);
 assert.strictEqual(validListing.form, 'baled');
 assert.strictEqual(validListing.phone, '9876543210');
+
+assert.throws(
+  () =>
+    validateListingInput({
+      village: 'Bhawanigarh',
+      district: 'Sangrur',
+      quantityQuintals: '150',
+      form: 'baled',
+      startDate: todayStr,
+      endDate: plus10Str,
+      phone: '',
+    }),
+  /Farmer mobile phone number is required/
+);
 
 const validOffer = validateOfferInput({
   listingId: 'list_123',
