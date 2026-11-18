@@ -12,6 +12,7 @@ import {
   AlertCircle,
   Check,
   Copy,
+  Share2,
 } from 'lucide-react';
 
 interface FarmerDashboardClientProps {
@@ -138,15 +139,56 @@ export default function FarmerDashboardClient({ token }: FarmerDashboardClientPr
     }
   };
 
+  const getDashboardCanonicalUrl = () => {
+    if (typeof window !== 'undefined') {
+      return `${window.location.origin}/market/manage/${encodeURIComponent(token.trim())}`;
+    }
+    return `https://krishi-vaayu.vercel.app/market/manage/${encodeURIComponent(token.trim())}`;
+  };
+
   const handleCopyLink = async () => {
-    if (typeof window === 'undefined') return;
+    const url = getDashboardCanonicalUrl();
     try {
-      await navigator.clipboard.writeText(window.location.href);
+      if (navigator.clipboard && window.isSecureContext) {
+        await navigator.clipboard.writeText(url);
+      } else {
+        const textArea = document.createElement('textarea');
+        textArea.value = url;
+        textArea.style.position = 'fixed';
+        textArea.style.left = '-999999px';
+        document.body.appendChild(textArea);
+        textArea.focus();
+        textArea.select();
+        document.execCommand('copy');
+        textArea.remove();
+      }
       setCopiedLink(true);
       setTimeout(() => setCopiedLink(false), 2000);
-    } catch (err) {
-      console.error('Failed to copy link:', err);
+    } catch {
+      try {
+        const textArea = document.createElement('textarea');
+        textArea.value = url;
+        textArea.style.position = 'fixed';
+        textArea.style.left = '-999999px';
+        document.body.appendChild(textArea);
+        textArea.focus();
+        textArea.select();
+        document.execCommand('copy');
+        textArea.remove();
+        setCopiedLink(true);
+        setTimeout(() => setCopiedLink(false), 2000);
+      } catch (err) {
+        console.error('Failed to copy link:', err);
+      }
     }
+  };
+
+  const handleShareWhatsApp = () => {
+    const url = getDashboardCanonicalUrl();
+    const shareText = encodeURIComponent(
+      `🌾 KrishiVayu Farmer Dashboard · Listing #${listing?.id || ''}\nVillage: ${listing?.village || ''}, ${listing?.district || ''}\nQuantity: ${listing?.quantityQuintals || ''} Quintals\nManage & View Buyer Offers:\n${url}`
+    );
+    window.open(`https://wa.me/?text=${shareText}`, '_blank');
   };
 
   const getStatusBadge = (status: ListingStatus) => {
@@ -217,6 +259,14 @@ export default function FarmerDashboardClient({ token }: FarmerDashboardClientPr
           >
             {copiedLink ? <Check className="w-3.5 h-3.5 text-[#2E7D32]" /> : <Copy className="w-3.5 h-3.5" />}
             <span>{copiedLink ? 'Copied Link' : 'Copy Link'}</span>
+          </button>
+          <button
+            onClick={handleShareWhatsApp}
+            className="px-3 py-1.5 bg-[#2E7D32] hover:bg-[#236327] text-white text-xs font-semibold rounded-md flex items-center gap-1.5 shadow-xs transition-colors min-h-[36px]"
+            title="Save or send this dashboard link to WhatsApp"
+          >
+            <Share2 className="w-3.5 h-3.5" />
+            <span className="hidden sm:inline">WhatsApp</span>
           </button>
           <Link
             href="/market"

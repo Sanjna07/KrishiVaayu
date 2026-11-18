@@ -13,7 +13,9 @@ export async function GET(
       return NextResponse.json({ error: 'Token is required' }, { status: 400 });
     }
 
-    const hashed = hashEditToken(token);
+    // Sanitize token: decode URI components, trim whitespace and trailing slashes
+    const cleanToken = decodeURIComponent(token).trim().replace(/\/+$/, '');
+    const hashed = hashEditToken(cleanToken);
     const listing = await marketRepo.getListingByTokenHash(hashed);
     if (!listing) {
       return NextResponse.json(

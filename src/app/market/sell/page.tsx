@@ -147,18 +147,50 @@ function SellFlowForm() {
   };
 
   // Management URL generator
+  // Canonical management URL generator
   const getManageUrl = () => {
-    if (typeof window === 'undefined') return `/market/manage/${createdEditToken}`;
-    return `${window.location.origin}/market/manage/${createdEditToken}`;
+    const origin =
+      typeof window !== 'undefined' && window.location.origin
+        ? window.location.origin
+        : process.env.NEXT_PUBLIC_SITE_URL || 'https://krishi-vaayu.vercel.app';
+    const cleanOrigin = origin.replace(/\/+$/, '');
+    return `${cleanOrigin}/market/manage/${encodeURIComponent(createdEditToken.trim())}`;
   };
 
   const handleCopyLink = async () => {
+    const url = getManageUrl();
     try {
-      await navigator.clipboard.writeText(getManageUrl());
+      if (navigator.clipboard && window.isSecureContext) {
+        await navigator.clipboard.writeText(url);
+      } else {
+        const textArea = document.createElement('textarea');
+        textArea.value = url;
+        textArea.style.position = 'fixed';
+        textArea.style.left = '-999999px';
+        document.body.appendChild(textArea);
+        textArea.focus();
+        textArea.select();
+        document.execCommand('copy');
+        textArea.remove();
+      }
       setCopiedLink(true);
       setTimeout(() => setCopiedLink(false), 2500);
-    } catch (err) {
-      console.error('Failed to copy link:', err);
+    } catch {
+      try {
+        const textArea = document.createElement('textarea');
+        textArea.value = url;
+        textArea.style.position = 'fixed';
+        textArea.style.left = '-999999px';
+        document.body.appendChild(textArea);
+        textArea.focus();
+        textArea.select();
+        document.execCommand('copy');
+        textArea.remove();
+        setCopiedLink(true);
+        setTimeout(() => setCopiedLink(false), 2500);
+      } catch (err) {
+        console.error('Failed to copy link:', err);
+      }
     }
   };
 
