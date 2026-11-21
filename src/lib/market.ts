@@ -142,10 +142,30 @@ export function validateListingInput(raw: unknown): CreateListingInput {
     throw new Error('Farmer mobile phone number is required');
   }
 
+  const tehsil =
+    typeof data.tehsil === 'string' && data.tehsil.trim()
+      ? data.tehsil.trim().slice(0, 100)
+      : undefined;
+
+  let coordinates: { lat: number; lng: number } | undefined = undefined;
+  if (data.coordinates && typeof data.coordinates === 'object') {
+    const coords = data.coordinates as { lat?: unknown; lng?: unknown };
+    const lat = typeof coords.lat === 'number' ? coords.lat : parseFloat(String(coords.lat));
+    const lng = typeof coords.lng === 'number' ? coords.lng : parseFloat(String(coords.lng));
+    if (!isNaN(lat) && !isNaN(lng) && lat >= -90 && lat <= 90 && lng >= -180 && lng <= 180) {
+      coordinates = {
+        lat: Math.round(lat * 10000) / 10000,
+        lng: Math.round(lng * 10000) / 10000,
+      };
+    }
+  }
+
   return {
     village: data.village.trim().slice(0, 100),
+    tehsil,
     district: data.district.trim().slice(0, 100),
     state: typeof data.state === 'string' && data.state.trim() ? data.state.trim().slice(0, 100) : 'Punjab',
+    coordinates,
     quantityQuintals,
     form: form as StrawForm,
     startDate,

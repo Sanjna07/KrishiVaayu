@@ -23,8 +23,10 @@ export interface AvailabilityWindow {
 export interface Listing {
   id: string;
   village: string;
+  tehsil?: string;
   district: string;
   state: string;
+  coordinates?: { lat: number; lng: number };
   quantityQuintals: number;
   form: StrawForm;
   availability: AvailabilityWindow;
@@ -76,8 +78,10 @@ export type ListingAction =
 
 export interface CreateListingInput {
   village: string;
+  tehsil?: string;
   district: string;
   state?: string;
+  coordinates?: { lat: number; lng: number };
   quantityQuintals: number;
   form: StrawForm;
   startDate: string;

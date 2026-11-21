@@ -10,7 +10,14 @@ export interface MarketDictionary {
   step3Desc: string;
   villageLabel: string;
   villagePlaceholder: string;
+  tehsilLabel: string;
+  tehsilPlaceholder: string;
   districtLabel: string;
+  gpsDetectBtn: string;
+  gpsDetecting: string;
+  gpsSuccessNotice: string;
+  gpsErrorNotice: string;
+  manualOrGpsNote: string;
   quantityLabel: string;
   quintalsUnit: string;
   formLabel: string;
@@ -46,9 +53,16 @@ export const marketDict: Record<MarketLang, MarketDictionary> = {
     step2Desc: 'How much residue do you have available?',
     step3Title: 'Step 3: Timing & Price',
     step3Desc: 'When can buyers pick it up?',
-    villageLabel: 'Village / Tehsil',
-    villagePlaceholder: 'e.g. Bhawanigarh, Dhuri',
+    villageLabel: 'Village / Gram Panchayat',
+    villagePlaceholder: 'e.g. Ladda, Bhawanigarh',
+    tehsilLabel: 'Tehsil / Sub-District',
+    tehsilPlaceholder: 'e.g. Dhuri, Sunam',
     districtLabel: 'District',
+    gpsDetectBtn: 'Auto-Detect Location (GPS)',
+    gpsDetecting: 'Fetching GPS & resolving village/tehsil...',
+    gpsSuccessNotice: 'Location detected via GPS. You can edit any field if needed.',
+    gpsErrorNotice: 'GPS access denied or timed out. Please enter village, tehsil, and district manually.',
+    manualOrGpsNote: 'Choose GPS auto-detect or enter your details manually below:',
     quantityLabel: 'Quantity (in Quintals)',
     quintalsUnit: 'Quintals (1 Quintal = 100 kg)',
     formLabel: 'Residue Form',
@@ -82,9 +96,16 @@ export const marketDict: Record<MarketLang, MarketDictionary> = {
     step2Desc: 'आपके पास कितनी पराली उपलब्ध है?',
     step3Title: 'चरण 3: समय और मूल्य',
     step3Desc: 'खरीदार कब उठाव कर सकते हैं?',
-    villageLabel: 'गांव / तहसील',
-    villagePlaceholder: 'उदा. भवानीगढ़, धूरी',
+    villageLabel: 'गांव / ग्राम पंचायत',
+    villagePlaceholder: 'उदा. लड्डा, भवानीगढ़',
+    tehsilLabel: 'तहसील / उप-जिला',
+    tehsilPlaceholder: 'उदा. धूरी, सुनाम',
     districtLabel: 'जिला',
+    gpsDetectBtn: 'GPS से स्वतः स्थान पता करें',
+    gpsDetecting: 'GPS खोजा जा रहा है और गांव/तहसील जांची जा रही है...',
+    gpsSuccessNotice: 'GPS से स्थान सफलतापूर्वक मिल गया। आवश्यकता पड़ने पर आप बदलाव कर सकते हैं।',
+    gpsErrorNotice: 'GPS अनुमति नहीं मिली। कृपया नीचे गांव, तहसील व जिला स्वयं दर्ज करें।',
+    manualOrGpsNote: 'GPS से स्वतः चुनें या नीचे स्वयं विवरण दर्ज करें:',
     quantityLabel: 'मात्रा (क्विंटल में)',
     quintalsUnit: 'क्विंटल (1 क्विंटल = 100 किग्रा)',
     formLabel: 'पराली का प्रकार',
@@ -118,9 +139,16 @@ export const marketDict: Record<MarketLang, MarketDictionary> = {
     step2Desc: 'ਤੁਹਾਡੇ ਕੋਲ ਕਿੰਨੀ ਪਰਾਲੀ ਉਪਲਬਧ ਹੈ?',
     step3Title: 'ਪੜਾਅ 3: ਸਮਾਂ ਅਤੇ ਰੇਟ',
     step3Desc: 'ਖਰੀਦਦਾਰ ਕਦੋਂ ਚੁੱਕ ਸਕਦੇ ਹਨ?',
-    villageLabel: 'ਪਿੰਡ / ਤਹਿਸੀਲ',
-    villagePlaceholder: 'ਜਿਵੇਂ ਭਵਾਨੀਗੜ੍ਹ, ਧੂਰੀ',
+    villageLabel: 'ਪਿੰਡ / ਗ੍ਰਾਮ ਪੰਚਾਇਤ',
+    villagePlaceholder: 'ਜਿਵੇਂ ਲੱਡਾ, ਭਵਾਨੀਗੜ੍ਹ',
+    tehsilLabel: 'ਤਹਿਸੀਲ / ਸਬ-ਡਵੀਜ਼ਨ',
+    tehsilPlaceholder: 'ਜਿਵੇਂ ਧੂਰੀ, ਸੁਨਾਮ',
     districtLabel: 'ਜ਼ਿਲ੍ਹਾ',
+    gpsDetectBtn: 'GPS ਰਾਹੀਂ ਖੇਤ ਦਾ ਟਿਕਾਣਾ ਖੋਜੋ',
+    gpsDetecting: 'GPS ਖੋਜਿਆ ਜਾ ਰਿਹਾ ਹੈ ਅਤੇ ਪਿੰਡ/ਤਹਿਸੀਲ ਜਾਂਚੀ ਜਾ ਰਹੀ ਹੈ...',
+    gpsSuccessNotice: 'GPS ਰਾਹੀਂ ਟਿਕਾਣਾ ਲੱਭ ਗਿਆ। ਲੋੜ ਅਨੁਸਾਰ ਤੁਸੀਂ ਬਦਲਾਅ ਕਰ ਸਕਦੇ ਹੋ।',
+    gpsErrorNotice: 'GPS ਦੀ ਆਗਿਆ ਨਹੀਂ ਮਿਲੀ। ਕਿਰਪਾ ਕਰਕੇ ਹੇਠਾਂ ਪਿੰਡ, ਤਹਿਸੀਲ ਤੇ ਜ਼ਿਲ੍ਹਾ ਖੁਦ ਦਰਜ ਕਰੋ।',
+    manualOrGpsNote: 'GPS ਰਾਹੀਂ ਆਪਣੇ ਆਪ ਚੁਣੋ ਜਾਂ ਹੇਠਾਂ ਵੇਰਵੇ ਖੁਦ ਭਰੋ:',
     quantityLabel: 'ਮਾਤਰਾ (ਕੁਇੰਟਲਾਂ ਵਿੱਚ)',
     quintalsUnit: 'ਕੁਇੰਟਲ (1 ਕੁਇੰਟਲ = 100 ਕਿੱਲੋ)',
     formLabel: 'ਪਰਾਲੀ ਦਾ ਰੂਪ',

@@ -25,6 +25,8 @@ import {
   AlertCircle,
   Truck,
   CheckCircle2,
+  Navigation,
+  Loader2,
 } from 'lucide-react';
 
 function SellFlowForm() {
@@ -45,8 +47,16 @@ function SellFlowForm() {
 
   // Form fields
   const [village, setVillage] = useState(initialVillage);
+  const [tehsil, setTehsil] = useState('');
   const [district, setDistrict] = useState(initialDistrict);
-  const [state] = useState('Punjab');
+  const [state, setState] = useState('Punjab');
+  const [coordinates, setCoordinates] = useState<{ lat: number; lng: number } | null>(null);
+
+  // GPS auto-detection states
+  const [isGpsLoading, setIsGpsLoading] = useState(false);
+  const [gpsSuccess, setGpsSuccess] = useState<string | null>(null);
+  const [gpsError, setGpsError] = useState<string | null>(null);
+
   const [quantity, setQuantity] = useState<number | string>(200);
   const [form, setForm] = useState<StrawForm>('baled');
 
@@ -73,11 +83,64 @@ function SellFlowForm() {
   // Quick quantity chip helper
   const quickQuantities = [100, 200, 350, 500, 1000];
 
+  // GPS auto-detection handler
+  const handleAutoDetectGPS = () => {
+    setGpsError(null);
+    setGpsSuccess(null);
+
+    if (typeof window === 'undefined' || !navigator.geolocation) {
+      setGpsError(t.gpsErrorNotice);
+      return;
+    }
+
+    setIsGpsLoading(true);
+    navigator.geolocation.getCurrentPosition(
+      async (pos) => {
+        try {
+          const lat = pos.coords.latitude;
+          const lng = pos.coords.longitude;
+          setCoordinates({ lat, lng });
+
+          const res = await fetch(`/api/geo/reverse?lat=${lat}&lng=${lng}`);
+          const data = await res.json();
+
+          if (res.ok && data.success) {
+            if (data.district) setDistrict(data.district);
+            if (data.tehsil) setTehsil(data.tehsil);
+            if (data.village) setVillage(data.village);
+            if (data.state) setState(data.state);
+
+            const parts = [data.village, data.tehsil, data.district].filter(Boolean);
+            setGpsSuccess(parts.join(', '));
+          } else {
+            setGpsError(data.error || t.gpsErrorNotice);
+          }
+        } catch {
+          setGpsError(t.gpsErrorNotice);
+        } finally {
+          setIsGpsLoading(false);
+        }
+      },
+      (err) => {
+        console.warn('Geolocation error:', err);
+        setGpsError(t.gpsErrorNotice);
+        setIsGpsLoading(false);
+      },
+      { enableHighAccuracy: true, timeout: 10000, maximumAge: 60000 }
+    );
+  };
+
   // Step 1 validation
   const handleStep1Next = () => {
     setErrorMsg(null);
     if (!village.trim()) {
-      setErrorMsg(lang === 'pa' ? 'ਕਿਰਪਾ ਕਰਕੇ ਪਿੰਡ ਦਾ ਨਾਂ ਦਰਜ ਕਰੋ।' : lang === 'hi' ? 'कृपया गांव का नाम दर्ज करें।' : 'Please enter your village name.');
+      setErrorMsg(
+        lang === 'pa'
+          ? 'ਕਿਰਪਾ ਕਰਕੇ ਪਿੰਡ ਦਾ ਨਾਂ ਦਰਜ ਕਰੋ।'
+          : lang === 'hi'
+          ? 'कृपया गांव का नाम दर्ज करें।'
+          : 'Please enter your village name.'
+      );
       return;
     }
     setStep(2);
@@ -88,7 +151,13 @@ function SellFlowForm() {
     setErrorMsg(null);
     const qty = Number(quantity);
     if (isNaN(qty) || qty < 1) {
-      setErrorMsg(lang === 'pa' ? 'ਘੱਟੋ-ਘੱਟ 1 ਕੁਇੰਟਲ ਮਾਤਰਾ ਦਰਜ ਕਰੋ।' : lang === 'hi' ? 'कम से कम 1 क्विंटल मात्रा दर्ज करें।' : 'Quantity must be at least 1 quintal.');
+      setErrorMsg(
+        lang === 'pa'
+          ? 'ਘੱਟੋ-ਘੱਟ 1 ਕੁਇੰਟਲ ਮਾਤਰਾ ਦਰਜ ਕਰੋ।'
+          : lang === 'hi'
+          ? 'कम से कम 1 क्विंटल मात्रा दर्ज करें।'
+          : 'Quantity must be at least 1 quintal.'
+      );
       return;
     }
     setStep(3);
@@ -117,8 +186,10 @@ function SellFlowForm() {
 
       const payload = {
         village: village.trim(),
+        tehsil: tehsil.trim() || undefined,
         district: district.trim(),
         state,
+        coordinates: coordinates || undefined,
         quantityQuintals: Number(quantity),
         form,
         startDate,
@@ -199,8 +270,9 @@ function SellFlowForm() {
 
   const handleShareWhatsApp = () => {
     const manageUrl = getManageUrl();
+    const locStr = [village, tehsil, district].filter(Boolean).join(', ');
     const shareText = encodeURIComponent(
-      `🌾 KrishiVayu Listing #${createdListingId}\nVillage: ${village}, ${district}\nQuantity: ${quantity} Quintals (${form})\nManage Listing & View Buyer Offers:\n${manageUrl}`
+      `🌾 KrishiVayu Listing #${createdListingId}\nLocation: ${locStr}\nQuantity: ${quantity} Quintals (${form})\nManage Listing & View Buyer Offers:\n${manageUrl}`
     );
     window.open(`https://wa.me/?text=${shareText}`, '_blank');
   };
@@ -287,23 +359,10 @@ function SellFlowForm() {
           <span className="text-[#1F3A5F] font-semibold">List Stubble for Free</span>
         </div>
 
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-[#D9DEE5] pb-4">
-          <div>
-            <h1 className="text-xl sm:text-2xl font-bold text-[#1F3A5F]">
-              🌾 {lang === 'pa' ? 'ਪਰਾਲੀ ਮੁਫ਼ਤ ਦਰਜ ਕਰੋ' : lang === 'hi' ? 'पराली निःशुल्क लिस्ट करें' : 'List Paddy Stubble for Sale'}
-            </h1>
-            <p className="text-xs text-[#5B6675] mt-1">
-              {lang === 'pa'
-                ? 'ਨੇੜਲੇ ਬਾਇਓ-ਗੈਸ ਪਲਾਂਟਾਂ ਅਤੇ ਪੈਲੇਟ ਖਰੀਦਦਾਰਾਂ ਨਾਲ ਸਿੱਧਾ ਜੁੜੋ ਬਿਨਾਂ ਕਿਸੇ ਵਿਚੋਲੇ ਦੇ।'
-                : lang === 'hi'
-                ? 'नजदीकी बायो-सीएनजी व पेलेट खरीदारों से सीधे संपर्क करें, बिना किसी बिचौलिए के।'
-                : 'Connect directly with certified bio-CNG plants, pellet units, and aggregators across Punjab & Haryana.'}
-            </p>
-          </div>
-          <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-semibold bg-emerald-50 text-emerald-800 border border-emerald-200 self-start sm:self-auto">
-            <ShieldCheck className="w-4 h-4 text-[#2E7D32]" />
-            <span>100% Free Public Portal</span>
-          </span>
+        <div className="border-b border-[#D9DEE5] pb-3">
+          <h1 className="text-xl sm:text-2xl font-bold text-[#1F3A5F]">
+            🌾 {lang === 'pa' ? 'ਪਰਾਲੀ ਮੁਫ਼ਤ ਦਰਜ ਕਰੋ' : lang === 'hi' ? 'पराली निःशुल्क लिस्ट करें' : 'List Paddy Stubble for Sale'}
+          </h1>
         </div>
       </div>
 
@@ -393,6 +452,63 @@ function SellFlowForm() {
                   </div>
 
                   <div className="space-y-4">
+                    {/* GPS Auto-Detect Card & Manual Selection Option */}
+                    <div className="p-3.5 bg-gradient-to-r from-emerald-50/80 to-blue-50/50 border border-emerald-200/80 rounded-lg">
+                      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                        <div className="min-w-0">
+                          <p className="text-xs font-semibold text-[#1F3A5F] flex items-center gap-1.5">
+                            <Navigation className="w-3.5 h-3.5 text-[#2E7D32]" />
+                            <span>{t.gpsDetectBtn}</span>
+                          </p>
+                          <p className="text-[11px] text-[#5B6675] mt-0.5">
+                            {t.manualOrGpsNote}
+                          </p>
+                        </div>
+                        <button
+                          type="button"
+                          onClick={handleAutoDetectGPS}
+                          disabled={isGpsLoading}
+                          className="min-h-[38px] px-4 py-2 bg-[#1F3A5F] hover:bg-[#162C49] disabled:bg-[#8892A0] text-white text-xs font-semibold rounded-md flex items-center justify-center gap-2 transition-colors shadow-xs shrink-0 cursor-pointer"
+                        >
+                          {isGpsLoading ? (
+                            <>
+                              <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                              <span>{t.gpsDetecting}</span>
+                            </>
+                          ) : (
+                            <>
+                              <Navigation className="w-3.5 h-3.5 text-emerald-300" />
+                              <span>{t.gpsDetectBtn}</span>
+                            </>
+                          )}
+                        </button>
+                      </div>
+
+                      {/* GPS Success Feedback */}
+                      {gpsSuccess && (
+                        <div className="mt-2.5 pt-2 border-t border-emerald-200 flex items-start gap-2 text-xs text-emerald-800">
+                          <CheckCircle2 className="w-4 h-4 text-[#2E7D32] shrink-0 mt-0.5" />
+                          <div className="min-w-0">
+                            <p className="font-semibold text-emerald-900">
+                              📍 {gpsSuccess}
+                            </p>
+                            <p className="text-[11px] text-emerald-700">
+                              {t.gpsSuccessNotice}
+                            </p>
+                          </div>
+                        </div>
+                      )}
+
+                      {/* GPS Error Feedback */}
+                      {gpsError && (
+                        <div className="mt-2.5 pt-2 border-t border-amber-200 flex items-start gap-2 text-xs text-amber-800">
+                          <AlertCircle className="w-4 h-4 text-amber-600 shrink-0 mt-0.5" />
+                          <span className="text-[11px] font-medium">{gpsError}</span>
+                        </div>
+                      )}
+                    </div>
+
+                    {/* Manual / Auto-populated Form Fields */}
                     <div>
                       <label className="block text-xs font-semibold text-[#1F3A5F] mb-1.5">
                         {t.districtLabel} <span className="text-red-500">*</span>
@@ -408,6 +524,19 @@ function SellFlowForm() {
                           </option>
                         ))}
                       </select>
+                    </div>
+
+                    <div>
+                      <label className="block text-xs font-semibold text-[#1F3A5F] mb-1.5">
+                        {t.tehsilLabel} <span className="text-[#8892A0] font-normal">(Optional / اختیاری)</span>
+                      </label>
+                      <input
+                        type="text"
+                        value={tehsil}
+                        onChange={(e) => setTehsil(e.target.value)}
+                        placeholder={t.tehsilPlaceholder}
+                        className="w-full min-h-[44px] bg-white border border-[#D9DEE5] rounded-md px-3.5 py-2 text-sm text-[#1B2430] placeholder-[#8892A0] focus:outline-none focus:ring-2 focus:ring-[#1F3A5F]"
+                      />
                     </div>
 
                     <div>
@@ -679,7 +808,9 @@ function SellFlowForm() {
               </div>
               <div className="flex justify-between items-center">
                 <span className="text-[#5B6675]">Location:</span>
-                <span className="font-medium text-[#1B2430]">{village}, {district}</span>
+                <span className="font-medium text-[#1B2430]">
+                  {village}{tehsil ? `, ${tehsil}` : ''}, {district}
+                </span>
               </div>
               <div className="flex justify-between items-center">
                 <span className="text-[#5B6675]">Residue Available:</span>

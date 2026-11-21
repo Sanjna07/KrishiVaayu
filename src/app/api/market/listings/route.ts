@@ -68,8 +68,10 @@ export async function POST(request: Request) {
     const newListing = await marketRepo.createListing({
       id: listingId,
       village: validatedInput.village,
+      tehsil: validatedInput.tehsil,
       district: validatedInput.district,
       state: validatedInput.state || 'Punjab',
+      coordinates: validatedInput.coordinates,
       quantityQuintals: validatedInput.quantityQuintals,
       form: validatedInput.form,
       availability: {
