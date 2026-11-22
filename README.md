@@ -201,7 +201,7 @@ FIRMS_MAP_KEY=your_nasa_firms_key_here
 FAST2SMS_API_KEY=your_fast2sms_api_key_here
 
 # MongoDB Connection URI (Optional: uses local file/memory adapter if unset)
-# MONGODB_URI=mongodb+srv://<username>:<password>@cluster0.mongodb.net/krishivayu?retryWrites=true&w=majority
+MONGODB_URI=mongodb+srv://<username>:<password>@cluster0.mongodb.net/krishivayu?retryWrites=true&w=majority
 
 # Base URL for constructing WhatsApp share and SMS dashboard links
 NEXT_PUBLIC_SITE_URL=https://krishi-vaayu.vercel.app
