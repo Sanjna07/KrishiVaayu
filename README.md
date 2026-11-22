@@ -8,7 +8,7 @@
 [![Tailwind CSS](https://img.shields.io/badge/Tailwind_CSS-v4-38B2AC?logo=tailwind-css)](https://tailwindcss.com/)
 [![NASA FIRMS](https://img.shields.io/badge/NASA-FIRMS_VIIRS_375m-red?logo=nasa)](https://firms.modaps.eosdis.nasa.gov/)
 [![Open-Meteo](https://img.shields.io/badge/Weather-Open--Meteo_ECMWF-007ACC)](https://open-meteo.com/)
-[![Tests](https://img.shields.io/badge/Tests-13%20Suites%20Passing-success)](https://github.com/Sanjna07/KrishiVayu)
+[![Tests](https://img.shields.io/badge/Tests-15%20Suites%20Passing-success)](https://github.com/Sanjna07/KrishiVayu)
 [![License](https://img.shields.io/badge/License-MIT-green.svg)](LICENSE)
 
 **🌐 Live Production Platform:** [https://krishi-vaayu.vercel.app/](https://krishi-vaayu.vercel.app/)
@@ -97,6 +97,22 @@ Integrated with Fast2SMS developer gateway to keep farmers informed on basic fea
 - Seasonal comparison toggle: **Paddy (Kharif, Oct–Nov)** vs. **Wheat (Rabi, Apr–May)**.
 - Dynamic Recharts visualizations: Responsive `AreaChart` for multi-year trends and `BarChart` for single-year views.
 
+### 7. 🎙️ Sarvam AI Vernacular Voice Fill (`saaras:v4`)
+- **Zero-Typing Listing Wizard**: Farmers speak naturally in **Hindi, Punjabi, or conversational Hinglish** to list their stubble.
+- **Context-Aware Extraction**: Powered by Sarvam AI's latest `saaras:v4` Speech-to-Text model, extracting crop variety, acreage, quintal conversion, baled/loose status, asking rate, and location entities.
+- **Vernacular Audio Guidance**: Pre-recorded trilingual audio instructions, interactive countdown recording timer, live voice playback, and explicit green tags (`✓ Voice Updated`) marking auto-filled fields.
+
+### 8. 📍 One-Click GPS Geolocation & Smart District Scoping
+- **Universal Navbar GPS Action**: One-click geolocation button embedded beside the trilingual switcher across the entire application.
+- **Reverse Geocoding**: Automatically resolves GPS coordinates into canonical Village, Tehsil, and District via OpenStreetMap Nominatim with offline centroid fallbacks.
+- **Automated Feed & Map Scoping**: Dynamically filters `/market` listing feed and synchronized MapLibre view to the user's localized home district.
+
+### 9. 🚚 Dynamic Transport Cost Estimator & Landed Buyer Price
+- **True Delivered Landed Cost**: Real-time economic transparency in the buyer offer modal:
+  $$\text{Buyer Landed Cost (₹/Qtl)} = \text{Farmer Rate} + \left(\frac{\text{Distance (km)} \times \text{Transport Cost per km}}{\text{Quantity (Qtl)}}\right)$$
+- **Interactive Controls**: Auto-estimated highway distances between buyer and farm districts, editable distance chips (`15 km`, `35 km`, `60 km`, `95 km`), and vehicle freight rates (`🚜 Tractor ₹35/km`, `🚛 10-Tyre ₹45/km`, `🚚 Heavy Truck ₹55/km`).
+- **Policy Threshold Verification**: Instant visual validation against the CPCB/PEDA economic procurement ceiling (₹180–₹230 / Quintal).
+
 ---
 
 ## 🎨 Design System: Government-Portal Light Theme
@@ -119,11 +135,13 @@ KrishiVayu is styled according to authentic Indian Government Digital Service st
 | **Styling & Icons** | Tailwind CSS v4, Lucide React Icons |
 | **Interactive Maps** | MapLibre GL v5.24.0, CARTO Positron vector tiles |
 | **Data Visualization** | Recharts v3.8.1 |
+| **Voice AI (STT)** | Sarvam AI API (`saaras:v4` Hindi/Punjabi Speech-to-Text & Entity Parsing) |
 | **Fire Telemetry API** | NASA EOSDIS FIRMS API (VIIRS 375m SNPP & NOAA-20) |
 | **Atmospheric Wind API**| Open-Meteo European ECMWF 10m atmospheric model |
+| **Geolocation Engine** | HTML5 Geolocation API, OpenStreetMap Nominatim Reverse Geocoder |
 | **SMS Gateway** | Fast2SMS Developer API (`bulkV2` quick transaction route) |
 | **Security & Auth** | Node.js `crypto` (SHA-256 token hashing), RFC 4180 CSV sanitization |
-| **Testing** | Node.js Test Runner, TSX, Comprehensive 13-suite automated matrix |
+| **Testing** | Node.js Test Runner, TSX, Comprehensive 15-suite automated matrix |
 
 ---
 
@@ -144,6 +162,14 @@ $$\text{Alignment} = \max\left(0, \cos(\Delta\theta)\right)$$
 - **$\text{Alignment} = 1.0$**: Wind blows straight toward Delhi (Maximum threat).
 - **$\text{Alignment} = 0.5$**: Crosswind.
 - **$\text{Alignment} = 0.0$**: Wind blows away from Delhi (Zero transport threat).
+
+### 3. Buyer Effective Landed Cost Model
+Determines the true delivered cost of crop residue per quintal for industrial buyers:
+$$\text{Effective Cost (₹/Qtl)} = P_{\text{farmer}} + \frac{D \cdot C_{\text{km}}}{Q}$$
+- $P_{\text{farmer}}$: Farmer offer / asking price (₹ / Quintal)
+- $D$: Road haul distance from farm to plant (km)
+- $C_{\text{km}}$: Freight vehicle rate (₹ / km) — e.g. Tractor Trolley (₹35/km), 10-Tyre Truck (₹45/km)
+- $Q$: Total residue quantity in lot (Quintals)
 
 ---
 
@@ -194,7 +220,7 @@ npm start
 
 ## 🧪 Comprehensive Test Suite
 
-KrishiVayu includes **13 automated test suites** covering domain math, API contracts, full lifecycle state machines, SMS delivery, and security:
+KrishiVayu includes **15 automated test suites** covering domain math, API contracts, full lifecycle state machines, SMS delivery, voice AI parsing, and security:
 
 ```bash
 npm test
@@ -214,52 +240,66 @@ npm test
 11. `tests/csv.test.ts`: Formula injection protection (`=`, `+`, `-`, `@`) on CSV exports.
 12. `tests/reports.test.ts`: Two-way community reporting and auto-quarantine threshold at $>3$ flags.
 13. `tests/sms.test.ts`: Fast2SMS mock fallback and event-driven SMS dispatch pipeline across all 5 events.
+14. `tests/gps.test.ts`: GPS boundary checks, coordinate validation, and reverse geocode district resolution.
+15. `tests/sarvam.test.ts`: Sarvam AI `saaras:v4` STT pipeline, audio MIME cleaning, acreage conversion, and Hinglish entity extraction.
 
 ---
 
-## 📂 Project Directory Structure
+## 📂 Project Directory Structure (3-Tier Full-Stack Architecture)
+
+KrishiVayu follows the official Next.js 16 App Router architecture, cleanly decoupled into **Frontend UI**, **Backend Microservices**, and **Shared Domain Contracts**:
 
 ```
 krishivayu/
-├── public/
-│   └── data/
-│       ├── alternatives.json        # 29 verified clean industrial buyers & CHCs
-│       ├── creams_paddy.json        # Historical ICAR-IARI paddy burning archives (2020-2025)
-│       ├── creams_wheat.json        # Historical ICAR-IARI wheat burning archives (2020-2025)
-│       └── districts.geojson        # Simplified administrative boundary polygons
-├── src/
-│   ├── app/
-│   │   ├── api/                     # Serverless Next.js API Routes
-│   │   │   ├── firms/               # NASA FIRMS telemetry proxy & caching
-│   │   │   ├── matches/             # Composite risk score computation engine
-│   │   │   ├── market/              # Marketplace listings, offers, & lifecycle endpoints
-│   │   │   └── reports/             # Anti-spam community reporting API
-│   │   ├── market/                  # Residue Marketplace page
-│   │   │   ├── sell/                # Centered 3-step listing creation wizard
-│   │   │   └── manage/[token]/      # Private farmer dashboard
-│   │   ├── trends/                  # Multi-year historical trends & analytics
-│   │   ├── globals.css              # Theme tokens & Tailwind CSS v4 directives
-│   │   ├── layout.tsx               # Root layout wrapped with LanguageProvider
-│   │   └── page.tsx                 # Main Alert & Match dashboard
-│   ├── components/                  # Reusable UI components
-│   │   ├── DetailDrawer.tsx         # District triage drawer & farmer advisory generator
-│   │   ├── ListingModal.tsx         # Role-aware listing modal & bidding interface
-│   │   ├── MainMap.tsx              # MapLibre risk map with GeoJSON polygons
-│   │   ├── MarketMap.tsx            # Synced residue marketplace map
-│   │   └── Navbar.tsx               # Navigation bar with trilingual language switcher
-│   ├── context/
-│   │   └── LanguageContext.tsx      # Universal trilingual state provider (EN / HI / PA)
-│   ├── lib/                         # Core domain logic, math, & utilities
-│   │   ├── atmospheric.ts           # Aerodynamic plume alignment & risk heuristics
-│   │   ├── csvExport.ts             # Formula-injection safe CSV exporter
-│   │   ├── fast2sms.ts              # Fast2SMS dispatch client & message templates
-│   │   ├── marketDict.ts            # Stubble wizard dictionaries
-│   │   ├── marketRepository.ts      # Thread-safe in-memory marketplace repository
-│   │   ├── marketSanitizer.ts       # PII redaction & contract boundaries
-│   │   ├── messages.ts              # Trilingual farmer advisory generator
-│   │   └── translations.ts          # Centralized dictionary for EN, Hindi, and Punjabi
-│   └── types/                       # TypeScript interfaces & domain types
-└── tests/                           # 13 automated unit, integration, & security test suites
+├── 🖥️ [FRONTEND UI & CLIENT STATE]
+│   ├── src/app/                          # Page Views & Layouts
+│   │   ├── page.tsx                      # 🏠 Home: Interactive Risk Map & Hotspots
+│   │   ├── market/page.tsx               # 🛒 Stubble Marketplace Feed & Map
+│   │   ├── market/sell/page.tsx          # 🌾 3-Step Listing Wizard (Voice + GPS)
+│   │   ├── market/manage/[token]/        # 👨‍🌾 Private Farmer Management Dashboard
+│   │   ├── trends/page.tsx               # 📊 Historical Satellite Trends (2020-2025)
+│   │   └── layout.tsx                    # Root Layout with Trilingual & Location Contexts
+│   ├── src/components/                   # 🎨 Reusable UI Components
+│   │   ├── ListingModal.tsx              # Transport Cost Estimator & Bidding Modal
+│   │   ├── VoiceFillModal.tsx            # Sarvam AI Vernacular Voice Fill Modal
+│   │   ├── MainMap.tsx / MarketMap.tsx   # MapLibre GL Interactive Maps
+│   │   ├── GpsButton.tsx                 # Auto-Detect Location Button
+│   │   └── Navbar.tsx / Footer.tsx       # Trilingual Navigation & Footers
+│   └── src/context/                      # 🔄 React Client State Providers
+│       ├── LanguageContext.tsx           # Trilingual Switcher (EN / HI / PA)
+│       └── LocationContext.tsx           # Global GPS Geolocation State
+│
+├── ⚙️ [BACKEND APIS & DOMAIN ENGINES]
+│   ├── src/app/api/                      # 🌐 REST Serverless Microservices
+│   │   ├── ai/sarvam/voice-fill/         # Sarvam AI STT & Entity Extraction API
+│   │   ├── geo/reverse/                  # GPS Reverse Geocoding API (OSM Nominatim)
+│   │   ├── market/listings/              # Stubble Listing CRUD & Scoping API
+│   │   ├── market/offers/                # Buyer Bidding & Landed Cost Offer API
+│   │   ├── market/reports/               # Two-Way Anti-Spam Reporting API
+│   │   ├── firms/                        # NASA VIIRS Telemetry Proxy & Caching
+│   │   ├── matches/                      # Airshed Composite Risk Calculation Engine
+│   │   └── weather/                      # Open-Meteo Wind Vector Engine
+│   └── src/lib/                          # 🧠 Backend Logic, Services & Repositories
+│       ├── services/
+│       │   ├── sarvamService.ts          # Sarvam AI STT Client (`saaras:v4`)
+│       │   └── smsService.ts             # Fast2SMS Notification Client
+│       ├── repo/
+│       │   ├── marketRepo.ts             # Thread-Safe In-Memory / File Repository
+│       │   └── mongoMarketRepo.ts        # Production MongoDB Repository
+│       ├── geo.ts                        # Haversine Distance & Bearing Spherical Math
+│       ├── risk.ts                       # Calibrated Delhi Airshed Risk Engine
+│       ├── weather.ts                    # Wind Trajectory & Smoke Alignment Math
+│       └── sarvamEntityExtractor.ts      # Multi-dialect Regex & Hinglish Entity Parser
+│
+├── 📐 [SHARED DOMAIN CONTRACTS]
+│   └── src/types/                        # TypeScript Interfaces (Market, Buyer, Offer, Weather)
+│
+├── 🧪 [TESTING MATRIX]
+│   └── tests/                            # 15 Automated Unit, Integration, & Security Test Suites
+│
+└── 📦 [STATIC DATA & ASSETS]
+    ├── public/data/                      # Alternatives, GeoJSON, Historical CREAMS archives
+    └── public/audio/                     # Sarvam AI Hindi & Punjabi Audio Instruction Guides
 ```
 
 ---

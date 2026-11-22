@@ -4,6 +4,7 @@ import { LanguageProvider } from "@/context/LanguageContext";
 import { LocationProvider } from "@/context/LocationContext";
 
 export const metadata: Metadata = {
+  metadataBase: new URL(process.env.NEXT_PUBLIC_SITE_URL || 'https://krishi-vaayu.vercel.app'),
   title: "KrishiVayu (कृषिवायु) — Burn Alert to Clean Buyer Match",
   description: "Detect crop-residue fires in Punjab/Haryana, rank risk to Delhi air quality, and match hotspots to clean residue alternatives.",
 };

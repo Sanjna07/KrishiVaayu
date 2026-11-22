@@ -305,7 +305,8 @@ export default function FarmerDashboardClient({ token }: FarmerDashboardClientPr
     if (typeof window !== 'undefined') {
       return `${window.location.origin}/market/manage/${encodeURIComponent(token.trim())}`;
     }
-    return `https://krishi-vaayu.vercel.app/market/manage/${encodeURIComponent(token.trim())}`;
+    const baseUrl = process.env.NEXT_PUBLIC_SITE_URL || 'https://krishi-vaayu.vercel.app';
+    return `${baseUrl}/market/manage/${encodeURIComponent(token.trim())}`;
   };
 
   const handleCopyLink = async () => {
