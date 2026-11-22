@@ -202,6 +202,9 @@ FAST2SMS_API_KEY=your_fast2sms_api_key_here
 
 # Base URL for constructing WhatsApp share and SMS dashboard links
 NEXT_PUBLIC_SITE_URL=https://krishi-vaayu.vercel.app
+
+# Sarvam AI API Key (Indic Voice-to-Text STT saaras:v4 for Hindi/Punjabi Voice Form Fill)
+SARVAM_API_KEY=your_sarvam_api_key_here
 ```
 
 ### 3. Run the Development Server
