@@ -34,9 +34,8 @@ yarn-error.log*
 .env*
 !.env.example
 
-# Claude Code internal files
-CLAUDE.md
-AGENTS.md
+# Local documentation & artifacts
+*.pdf
 
 # vercel
 .vercel
