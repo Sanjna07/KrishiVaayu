@@ -27,7 +27,9 @@ import {
   CheckCircle2,
   Navigation,
   Loader2,
+  Mic,
 } from 'lucide-react';
+import { VoiceFillModal } from '@/components/VoiceFillModal';
 
 function SellFlowForm() {
   const router = useRouter();
@@ -82,6 +84,34 @@ function SellFlowForm() {
 
   // Quick quantity chip helper
   const quickQuantities = [100, 200, 350, 500, 1000];
+
+  // Sarvam AI Voice-Fill state
+  const [isVoiceModalOpen, setIsVoiceModalOpen] = useState(false);
+  const [voiceNotice, setVoiceNotice] = useState<string | null>(null);
+
+  const handleApplyVoiceData = (data: {
+    village: string;
+    tehsil?: string;
+    district: string;
+    quantity: number;
+    form: StrawForm;
+    askingPrice?: number;
+  }) => {
+    if (data.village) setVillage(data.village);
+    if (data.tehsil) setTehsil(data.tehsil);
+    if (data.district) setDistrict(data.district);
+    if (data.quantity) setQuantity(data.quantity);
+    if (data.form) setForm(data.form);
+    if (data.askingPrice) setAskingPrice(data.askingPrice);
+
+    setVoiceNotice(
+      lang === 'pa'
+        ? `✅ ਸਰਵਮ AI ਵੱਲੋਂ ਜਾਣਕਾਰੀ ਦਰਜ ਹੋ ਗਈ (${data.village}, ${data.quantity} ਕੁਇੰਟਲ)। ਕਿਰਪਾ ਕਰਕੇ ਪੜਤਾਲ ਕਰੋ ਅਤੇ ਅੰਤ ਵਿੱਚ ਖੁਦ ਜਮ੍ਹਾਂ ਕਰੋ।`
+        : lang === 'hi'
+        ? `✅ सर्वम AI द्वारा विवरण भर दिए गए (${data.village}, ${data.quantity} क्विंटल)। कृपया विवरण जांचें और अंत में स्वयं सबमिट करें।`
+        : `✅ Details applied from Sarvam AI (${data.village}, ${data.quantity} Qtl). Please review all fields and submit manually.`
+    );
+  };
 
   // GPS auto-detection handler
   const handleAutoDetectGPS = () => {
@@ -356,18 +386,73 @@ function SellFlowForm() {
           <span>/</span>
           <Link href="/market" className="hover:text-[#1F3A5F] transition-colors">Residue Marketplace</Link>
           <span>/</span>
-          <span className="text-[#1F3A5F] font-semibold">List Stubble for Free</span>
+          <span className="text-[#1F3A5F] font-semibold">List Paddy Stubble for Sale</span>
         </div>
 
         <div className="border-b border-[#D9DEE5] pb-3">
           <h1 className="text-xl sm:text-2xl font-bold text-[#1F3A5F]">
-            🌾 {lang === 'pa' ? 'ਪਰਾਲੀ ਮੁਫ਼ਤ ਦਰਜ ਕਰੋ' : lang === 'hi' ? 'पराली निःशुल्क लिस्ट करें' : 'List Paddy Stubble for Sale'}
+            🌾 {lang === 'pa' ? 'ਪਰਾਲੀ ਵੇਚਣ ਲਈ ਦਰਜ ਕਰੋ' : lang === 'hi' ? 'पराली बिक्री हेतु लिस्ट करें' : 'List Paddy Stubble for Sale'}
           </h1>
         </div>
       </div>
 
       {/* Main Container: Centered Layout */}
       <main className="max-w-2xl w-full mx-auto px-4 py-6 flex-1">
+        {/* Sarvam AI Voice Assistant Banner (Featured Rural Access Option) */}
+        {step !== 'success' && (
+          <div className="mb-4 bg-gradient-to-r from-emerald-900 to-[#1F3A5F] text-white rounded-xl p-3.5 sm:p-4 shadow-sm border border-emerald-600/30 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+            <div className="flex items-start gap-3">
+              <div className="w-10 h-10 rounded-xl bg-emerald-500/20 border border-emerald-400/40 flex items-center justify-center text-emerald-300 shrink-0">
+                <Mic className="w-5 h-5 animate-pulse" />
+              </div>
+              <div className="min-w-0">
+                <div className="flex items-center gap-2">
+                  <h3 className="font-bold text-xs sm:text-sm text-white">
+                    {lang === 'pa' ? '🎙️ ਬੋਲ ਕੇ ਫਾਰਮ ਭਰੋ (Sarvam AI)' : lang === 'hi' ? '🎙️ बोलकर भरें (Sarvam AI Voice)' : '🎙️ Voice-Fill Form (Sarvam AI)'}
+                  </h3>
+                  <span className="text-[10px] bg-emerald-500/30 text-emerald-200 border border-emerald-400/30 px-2 py-0.5 rounded-full font-medium">
+                    Hindi &amp; Punjabi
+                  </span>
+                </div>
+                <p className="text-[11px] text-slate-200 mt-0.5 leading-snug">
+                  {lang === 'pa'
+                    ? '10-12 ਸਕਿੰਟਾਂ ਦੀ ਆਡੀਓ ਹਿਦਾਇਤ ਸੁਣੋ ਅਤੇ ਬੋਲ ਕੇ ਪੂਰਾ ਫਾਰਮ ਭਰੋ।'
+                    : lang === 'hi'
+                    ? '10-12 सेकंड का ऑडियो निर्देश सुनें और बोलकर 30 सेकंड में फॉर्म भरें।'
+                    : 'Listen to 10-12s audio instructions, then speak to fill your listing automatically.'}
+                </p>
+              </div>
+            </div>
+            <button
+              type="button"
+              onClick={() => setIsVoiceModalOpen(true)}
+              className="px-4 py-2 bg-emerald-500 hover:bg-emerald-600 active:scale-98 text-white text-xs font-bold rounded-lg flex items-center justify-center gap-2 shadow-md transition-all shrink-0 cursor-pointer"
+            >
+              <Mic className="w-3.5 h-3.5" />
+              <span>
+                {lang === 'pa' ? 'ਆਵਾਜ਼ ਨਾਲ ਭਰੋ' : lang === 'hi' ? 'आवाज़ से भरें' : 'Start Voice Fill'}
+              </span>
+            </button>
+          </div>
+        )}
+
+        {/* AI Voice Details Applied Confirmation Banner */}
+        {voiceNotice && step !== 'success' && (
+          <div className="mb-4 bg-emerald-50 border border-emerald-300 rounded-xl p-3.5 text-xs text-emerald-900 flex items-start justify-between gap-2 shadow-2xs">
+            <div className="flex items-start gap-2.5">
+              <CheckCircle2 className="w-4 h-4 text-[#2E7D32] shrink-0 mt-0.5" />
+              <span className="font-medium">{voiceNotice}</span>
+            </div>
+            <button
+              type="button"
+              onClick={() => setVoiceNotice(null)}
+              className="text-emerald-700 hover:text-emerald-900 text-xs font-bold"
+            >
+              ✕
+            </button>
+          </div>
+        )}
+
         {/* Deep-link notification pill if arrived via WhatsApp alert */}
         {refSource === 'wa' && step !== 'success' && (
           <div className="mb-4 bg-emerald-50 border border-emerald-200 rounded-lg p-3 text-xs text-emerald-800 flex items-center gap-2">
@@ -885,6 +970,14 @@ function SellFlowForm() {
             </div>
           </div>
         )}
+
+        {/* Sarvam AI Voice Assistant Modal */}
+        <VoiceFillModal
+          isOpen={isVoiceModalOpen}
+          onClose={() => setIsVoiceModalOpen(false)}
+          onApply={handleApplyVoiceData}
+          lang={lang}
+        />
       </main>
     </div>
   );
