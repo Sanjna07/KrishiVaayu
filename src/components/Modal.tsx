@@ -9,9 +9,10 @@ interface ModalProps {
   title: string;
   subtitle?: string;
   children: ReactNode;
+  maxWidth?: string;
 }
 
-export function Modal({ isOpen, onClose, title, subtitle, children }: ModalProps) {
+export function Modal({ isOpen, onClose, title, subtitle, children, maxWidth }: ModalProps) {
   const modalRef = useRef<HTMLDivElement>(null);
   const previousActiveElement = useRef<HTMLElement | null>(null);
 
@@ -85,7 +86,7 @@ export function Modal({ isOpen, onClose, title, subtitle, children }: ModalProps
         role="dialog"
         aria-modal="true"
         aria-labelledby="modal-title"
-        className="w-full sm:max-w-2xl bg-white border border-[#D9DEE5] rounded-t-2xl sm:rounded-xl shadow-xl flex flex-col max-h-[90vh] sm:max-h-[85vh] overflow-hidden"
+        className={`w-full ${maxWidth || 'sm:max-w-2xl'} bg-white border border-[#D9DEE5] rounded-t-2xl sm:rounded-xl shadow-xl flex flex-col max-h-[90vh] sm:max-h-[85vh] overflow-hidden`}
       >
         {/* Modal Header */}
         <div className="flex items-center justify-between px-5 py-4 border-b border-[#D9DEE5] bg-[#F5F7FA]">

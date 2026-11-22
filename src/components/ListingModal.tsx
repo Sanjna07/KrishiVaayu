@@ -16,6 +16,8 @@ import {
   AlertTriangle,
   AlertCircle,
   X,
+  Truck,
+  Calculator,
 } from 'lucide-react';
 
 interface ListingModalProps {
@@ -57,6 +59,32 @@ const DEMO_BUYERS: BuyerProfile[] = [
   },
 ];
 
+const ESTIMATED_DISTANCES: Record<string, number> = {
+  'bathinda-sangrur': 92,
+  'patiala-sangrur': 58,
+  'bathinda-patiala': 148,
+  'ludhiana-sangrur': 74,
+  'barnala-sangrur': 36,
+  'bathinda-mansa': 52,
+  'mansa-sangrur': 48,
+  'fatehgarh sahib-patiala': 38,
+  'jalandhar-ludhiana': 61,
+  'amritsar-jalandhar': 82,
+  'ferozepur-moga': 56,
+  'ludhiana-moga': 68,
+  'bathinda-ludhiana': 130,
+  'patiala-ludhiana': 94,
+};
+
+function getEstimatedDistance(buyerDistrict?: string, farmDistrict?: string): number {
+  if (!buyerDistrict || !farmDistrict) return 25;
+  const b = buyerDistrict.toLowerCase().trim();
+  const f = farmDistrict.toLowerCase().trim();
+  if (b === f) return 15; // Same district farm-to-plant haul ~15 km
+  const pair = [b, f].sort().join('-');
+  return ESTIMATED_DISTANCES[pair] || 35;
+}
+
 export function ListingModal({
   listing,
   isOpen,
@@ -82,6 +110,23 @@ export function ListingModal({
   const [offerSuccess, setOfferSuccess] = useState(false);
   const [offerError, setOfferError] = useState<string | null>(null);
 
+  // Transport Cost Estimator State
+  const [transportDistanceKm, setTransportDistanceKm] = useState<number>(25);
+  const [transportCostPerKm, setTransportCostPerKm] = useState<number>(40);
+
+  // Sync asking price & initial distance when listing or buyer changes
+  useEffect(() => {
+    if (listing) {
+      if (listing.askingPricePerQuintal && listing.askingPricePerQuintal > 0) {
+        setOfferRate(listing.askingPricePerQuintal);
+      }
+      const preset = DEMO_BUYERS.find((b) => b.id === selectedBuyerId);
+      if (preset) {
+        setTransportDistanceKm(getEstimatedDistance(preset.district, listing.district));
+      }
+    }
+  }, [listing?.id, listing?.district, listing?.askingPricePerQuintal]);
+
   const handleBuyerSelectionChange = (newBuyerId: string) => {
     setSelectedBuyerId(newBuyerId);
     if (newBuyerId !== 'custom') {
@@ -91,6 +136,9 @@ export function ListingModal({
         const isPresetPattern = !buyerContact || DEMO_BUYERS.some((d) => d.contact === buyerContact);
         if (isPresetPattern) {
           setBuyerContact(preset.contact);
+        }
+        if (listing) {
+          setTransportDistanceKm(getEstimatedDistance(preset.district, listing.district));
         }
       }
     }
@@ -262,6 +310,7 @@ export function ListingModal({
       onClose={onClose}
       title={`${listing.village}, ${listing.district}`}
       subtitle={`Listing #${listing.id} · ${listing.quantityQuintals} Quintals (${listing.form === 'baled' ? 'Baled' : 'Loose'})`}
+      maxWidth="sm:max-w-3xl lg:max-w-4xl"
     >
       <div className="space-y-4">
         {/* Navigation Tabs */}
@@ -448,162 +497,448 @@ export function ListingModal({
         )}
 
         {/* Tab 3: Make an Offer */}
-        {activeTab === 'make_offer' && (
-          <div className="space-y-3 text-xs">
-            {offerSuccess ? (
-              <div className="p-4 bg-green-50 border border-green-200 rounded-lg text-center space-y-2 text-green-900">
-                <Check className="w-6 h-6 text-green-700 mx-auto" />
-                <p className="font-bold">Offer Submitted Successfully!</p>
-                <p className="text-xs">
-                  The farmer has received your offer. When accepted, contact details will be mutually unlocked.
-                </p>
-              </div>
-            ) : (
-              <form onSubmit={handleMakeOffer} className="space-y-3">
-                {offerError && (
-                  <div className="p-2.5 bg-red-50 border border-red-200 rounded text-red-800 text-xs">
-                    {offerError}
-                  </div>
-                )}
+        {activeTab === 'make_offer' && (() => {
+          // Estimator Calculations
+          // User Formula: Buyer ki effective cost = Farmer ka rate + (distance × transport cost per km ÷ quantity)
+          const quantity = Math.max(1, listing.quantityQuintals || 1);
+          const distance = Math.max(0, transportDistanceKm || 0);
+          const ratePerKm = Math.max(0, transportCostPerKm || 0);
+          const baseRate = Math.max(0, offerRate || 0);
 
-                <div>
-                  <label className="block text-[11px] font-semibold text-[#5B6675] mb-1">
-                    Select Buying Entity
-                  </label>
-                  <select
-                    value={selectedBuyerId}
-                    onChange={(e) => handleBuyerSelectionChange(e.target.value)}
-                    className="w-full bg-white border border-[#D9DEE5] rounded-md p-2 text-xs text-[#1B2430] focus:ring-2 focus:ring-[#1F3A5F]"
-                  >
-                    <optgroup label="Preset Verified Plants / Buyers">
-                      {DEMO_BUYERS.map((b) => (
-                        <option key={b.id} value={b.id}>
-                          {b.name} ({b.district} · {b.type.replace('_', ' ')})
-                        </option>
-                      ))}
-                    </optgroup>
-                    <optgroup label="Direct / Custom Buyer">
-                      <option value="custom">➕ Enter Custom Organization / New Buyer</option>
-                    </optgroup>
-                  </select>
+          const totalFreight = distance * ratePerKm;
+          const transportPerQuintal = totalFreight / quantity;
+          const effectiveBuyerCost = baseRate + transportPerQuintal;
+
+          const farmerPayout = baseRate * quantity;
+          const totalDealCost = effectiveBuyerCost * quantity;
+
+          const t = {
+            en: {
+              estimatorTitle: 'Transport Cost Estimator',
+              estimatorSubtitle: 'Effective Landed Buyer Cost',
+              distanceLabel: 'Transport Distance (km)',
+              transportRateLabel: 'Freight Rate (₹ / km)',
+              formulaHeader: 'Effective Cost Formula',
+              farmerBaseRate: 'Farmer Offer Rate',
+              freightOverhead: 'Transport Overhead',
+              effectiveCost: "Buyer's Effective Cost",
+              perQuintal: '/ Quintal',
+              perTonne: '/ MT',
+              totalOutlay: 'Total Landed Outlay',
+              farmerGets: 'Farmer Payout',
+              freightGets: 'Logistics Freight',
+              withinBenchmark: 'Economical: Within CPCB/PEDA procurement range (₹180–₹230/Qtl)',
+              aboveBenchmark: 'Higher Freight: Consider optimizing distance or vehicle capacity',
+              customDist: 'Custom Distance',
+            },
+            hi: {
+              estimatorTitle: 'परिवहन लागत एवं प्रभावी दर (Estimator)',
+              estimatorSubtitle: 'खरीदार की वास्तविक लैंडेड लागत',
+              distanceLabel: 'खेत से दूरी (किमी)',
+              transportRateLabel: 'भाड़ा दर (₹ / किमी)',
+              formulaHeader: 'प्रभावी लागत सूत्र (Formula)',
+              farmerBaseRate: 'किसान का रेट',
+              freightOverhead: 'परिवहन भाड़ा खर्च',
+              effectiveCost: 'खरीदार की प्रभावी लागत',
+              perQuintal: '/ क्विंटल',
+              perTonne: '/ टन',
+              totalOutlay: 'कुल खरीद बजट (Total Outlay)',
+              farmerGets: 'किसान भुगतान',
+              freightGets: 'ट्रांसपोर्टर भाड़ा',
+              withinBenchmark: 'किफायती: मानक औद्योगिक सीमा (₹180–₹230/क्विंटल) के भीतर',
+              aboveBenchmark: 'अधिक भाड़ा: कृपया दूरी या वाहन क्षमता की समीक्षा करें',
+              customDist: 'कस्टम दूरी',
+            },
+            pa: {
+              estimatorTitle: 'ਢੋਆ-ਢੁਆਈ ਖਰਚਾ ਅਨੁਮਾਨਕ (Estimator)',
+              estimatorSubtitle: 'ਖਰੀਦਾਰ ਦੀ ਅਸਲ ਲੈਂਡਿਡ ਲਾਗਤ',
+              distanceLabel: 'ਖੇਤ ਤੋਂ ਦੂਰੀ (ਕਿਮੀ)',
+              transportRateLabel: 'ਕਿਰਾਇਆ ਦਰ (₹ / ਕਿਮੀ)',
+              formulaHeader: 'ਅਸਲ ਲਾਗਤ ਫਾਰਮੂਲਾ',
+              farmerBaseRate: 'ਕਿਸਾਨ ਦੀ ਦਰ',
+              freightOverhead: 'ਢੋਆ-ਢੁਆਈ ਖਰਚਾ',
+              effectiveCost: 'ਖਰੀਦਾਰ ਦੀ ਪ੍ਰਭਾਵੀ ਲਾਗਤ',
+              perQuintal: '/ ਕੁਇੰਟਲ',
+              perTonne: '/ ਟਨ',
+              totalOutlay: 'ਕੁੱਲ ਖਰੀਦ ਬਜਟ (Total Outlay)',
+              farmerGets: 'ਕਿਸਾਨ ਭੁਗਤਾਨ',
+              freightGets: 'ਟਰਾਂਸਪੋਰਟਰ ਕਿਰਾਇਆ',
+              withinBenchmark: 'ਲਾਹੇਵੰਦ: ਉਦਯੋਗਿਕ ਮਿਆਰ (₹180–₹230/ਕੁਇੰਟਲ) ਦੇ ਅੰਦਰ',
+              aboveBenchmark: 'ਵਧੇਰੇ ਕਿਰਾਇਆ: ਕਿਰਪਾ ਕਰਕੇ ਦੂਰੀ ਜਾਂ ਵਾਹਨ ਦੀ ਸਮੀਖਿਆ ਕਰੋ',
+              customDist: 'ਕਸਟਮ ਦੂਰੀ',
+            },
+          }[lang] || {
+            estimatorTitle: 'Transport Cost Estimator',
+            estimatorSubtitle: 'Effective Landed Buyer Cost',
+            distanceLabel: 'Transport Distance (km)',
+            transportRateLabel: 'Freight Rate (₹ / km)',
+            formulaHeader: 'Effective Cost Formula',
+            farmerBaseRate: 'Farmer Offer Rate',
+            freightOverhead: 'Transport Overhead',
+            effectiveCost: "Buyer's Effective Cost",
+            perQuintal: '/ Quintal',
+            perTonne: '/ MT',
+            totalOutlay: 'Total Landed Outlay',
+            farmerGets: 'Farmer Payout',
+            freightGets: 'Logistics Freight',
+            withinBenchmark: 'Economical: Within CPCB/PEDA procurement range (₹180–₹230/Qtl)',
+            aboveBenchmark: 'Higher Freight: Consider optimizing distance or vehicle capacity',
+            customDist: 'Custom Distance',
+          };
+
+          return (
+            <div className="space-y-3 text-xs">
+              {offerSuccess ? (
+                <div className="p-6 bg-green-50 border border-green-200 rounded-lg text-center space-y-2 text-green-900 my-4">
+                  <Check className="w-8 h-8 text-green-700 mx-auto" />
+                  <p className="font-bold text-sm">Offer Submitted Successfully!</p>
+                  <p className="text-xs">
+                    The farmer has received your offer. When accepted, contact details will be mutually unlocked.
+                  </p>
                 </div>
+              ) : (
+                <div className="grid grid-cols-1 lg:grid-cols-12 gap-5 items-start">
+                  {/* Left Column: Make Offer Form (7 cols) */}
+                  <form onSubmit={handleMakeOffer} className="lg:col-span-7 space-y-3">
+                    {offerError && (
+                      <div className="p-2.5 bg-red-50 border border-red-200 rounded text-red-800 text-xs">
+                        {offerError}
+                      </div>
+                    )}
 
-                {selectedBuyerId === 'custom' && (
-                  <div className="p-3 bg-[#F5F7FA] border border-[#D9DEE5] rounded-lg space-y-2.5">
                     <div>
                       <label className="block text-[11px] font-semibold text-[#5B6675] mb-1">
-                        Buyer / Organization Name <span className="text-red-500">*</span>
+                        Select Buying Entity
                       </label>
-                      <input
-                        type="text"
-                        placeholder="e.g. Punjab Bio-Energy Pvt. Ltd."
-                        value={customBuyerName}
-                        onChange={(e) => setCustomBuyerName(e.target.value)}
+                      <select
+                        value={selectedBuyerId}
+                        onChange={(e) => handleBuyerSelectionChange(e.target.value)}
                         className="w-full bg-white border border-[#D9DEE5] rounded-md p-2 text-xs text-[#1B2430] focus:ring-2 focus:ring-[#1F3A5F]"
-                        required={selectedBuyerId === 'custom'}
+                      >
+                        <optgroup label="Preset Verified Plants / Buyers">
+                          {DEMO_BUYERS.map((b) => (
+                            <option key={b.id} value={b.id}>
+                              {b.name} ({b.district} · {b.type.replace('_', ' ')})
+                            </option>
+                          ))}
+                        </optgroup>
+                        <optgroup label="Direct / Custom Buyer">
+                          <option value="custom">➕ Enter Custom Organization / New Buyer</option>
+                        </optgroup>
+                      </select>
+                    </div>
+
+                    {selectedBuyerId === 'custom' && (
+                      <div className="p-3 bg-[#F5F7FA] border border-[#D9DEE5] rounded-lg space-y-2.5">
+                        <div>
+                          <label className="block text-[11px] font-semibold text-[#5B6675] mb-1">
+                            Buyer / Organization Name <span className="text-red-500">*</span>
+                          </label>
+                          <input
+                            type="text"
+                            placeholder="e.g. Punjab Bio-Energy Pvt. Ltd."
+                            value={customBuyerName}
+                            onChange={(e) => setCustomBuyerName(e.target.value)}
+                            className="w-full bg-white border border-[#D9DEE5] rounded-md p-2 text-xs text-[#1B2430] focus:ring-2 focus:ring-[#1F3A5F]"
+                            required={selectedBuyerId === 'custom'}
+                          />
+                        </div>
+
+                        <div>
+                          <label className="block text-[11px] font-semibold text-[#5B6675] mb-1">
+                            Buyer Type
+                          </label>
+                          <select
+                            value={customBuyerType}
+                            onChange={(e) => setCustomBuyerType(e.target.value as Offer['buyerType'])}
+                            className="w-full bg-white border border-[#D9DEE5] rounded-md p-2 text-xs text-[#1B2430] focus:ring-2 focus:ring-[#1F3A5F]"
+                          >
+                            <option value="cbg_plant">Bio-CNG (CBG) Plant</option>
+                            <option value="biomass_plant">Biomass Power Plant</option>
+                            <option value="pellet_unit">Biomass Pellet Unit</option>
+                            <option value="residue_buyer">Residue Off-Taker</option>
+                            <option value="aggregator">Straw Aggregator</option>
+                          </select>
+                        </div>
+                      </div>
+                    )}
+
+                    {/* Buyer Contact Phone - Always Editable */}
+                    <div>
+                      <div className="flex items-center justify-between mb-1">
+                        <label className="block text-[11px] font-semibold text-[#1B2430]">
+                          Buyer Mobile Phone (Fast2SMS Alert Recipient) <span className="text-red-500">*</span>
+                        </label>
+                        <span className="text-[10px] text-[#2E7D32] font-medium">Editable for testing</span>
+                      </div>
+                      <input
+                        type="tel"
+                        maxLength={10}
+                        placeholder="10-digit mobile number (e.g. 9876543210)"
+                        value={buyerContact}
+                        onChange={(e) => setBuyerContact(e.target.value.replace(/\D/g, '').slice(0, 10))}
+                        className="w-full bg-white border border-[#D9DEE5] rounded-md p-2 text-xs text-[#1B2430] focus:ring-2 focus:ring-[#1F3A5F] font-mono"
+                        required
+                      />
+                      <p className="text-[10px] text-[#5B6675] mt-1">
+                        📱 You will receive instant Fast2SMS updates on this number when the farmer accepts or declines this offer.
+                      </p>
+                    </div>
+
+                    <div className="grid grid-cols-2 gap-3">
+                      <div>
+                        <div className="flex items-center justify-between mb-1">
+                          <label className="block text-[11px] font-semibold text-[#5B6675]">
+                            Offer Rate (₹ / Qtl)
+                          </label>
+                          <span className="text-[10px] font-bold text-emerald-700">
+                            Landed: ₹{effectiveBuyerCost.toFixed(1)}
+                          </span>
+                        </div>
+                        <input
+                          type="number"
+                          min={50}
+                          max={1000}
+                          value={offerRate}
+                          onChange={(e) => setOfferRate(Number(e.target.value))}
+                          className="w-full bg-white border border-[#D9DEE5] rounded-md p-2 text-xs font-semibold text-[#1B2430] focus:ring-2 focus:ring-[#1F3A5F]"
+                          required
+                        />
+                      </div>
+                      <div>
+                        <label className="block text-[11px] font-semibold text-[#5B6675] mb-1">
+                          Proposed Pickup Date
+                        </label>
+                        <input
+                          type="date"
+                          value={pickupDate}
+                          onChange={(e) => setPickupDate(e.target.value)}
+                          className="w-full bg-white border border-[#D9DEE5] rounded-md p-2 text-xs text-[#1B2430] focus:ring-2 focus:ring-[#1F3A5F]"
+                          required
+                        />
+                      </div>
+                    </div>
+
+                    <div>
+                      <label className="block text-[11px] font-semibold text-[#5B6675] mb-1">
+                        Note for Farmer (e.g. baler loading requirements)
+                      </label>
+                      <textarea
+                        rows={2}
+                        value={buyerNote}
+                        onChange={(e) => setBuyerNote(e.target.value)}
+                        placeholder="We provide transport and baler loading within 48 hours..."
+                        className="w-full bg-white border border-[#D9DEE5] rounded-md p-2 text-xs text-[#1B2430] focus:ring-2 focus:ring-[#1F3A5F]"
                       />
                     </div>
 
-                    <div>
-                      <label className="block text-[11px] font-semibold text-[#5B6675] mb-1">
-                        Buyer Type
-                      </label>
-                      <select
-                        value={customBuyerType}
-                        onChange={(e) => setCustomBuyerType(e.target.value as Offer['buyerType'])}
-                        className="w-full bg-white border border-[#D9DEE5] rounded-md p-2 text-xs text-[#1B2430] focus:ring-2 focus:ring-[#1F3A5F]"
-                      >
-                        <option value="cbg_plant">Bio-CNG (CBG) Plant</option>
-                        <option value="biomass_plant">Biomass Power Plant</option>
-                        <option value="pellet_unit">Biomass Pellet Unit</option>
-                        <option value="residue_buyer">Residue Off-Taker</option>
-                        <option value="aggregator">Straw Aggregator</option>
-                      </select>
+                    <div className="p-2.5 bg-amber-50 border border-amber-200 rounded text-[11px] text-amber-900 flex items-center gap-2">
+                      <ShieldCheck className="w-4 h-4 text-amber-700 shrink-0" />
+                      <span>Farmer contact is private and unlocked only after the farmer accepts.</span>
+                    </div>
+
+                    <button
+                      type="submit"
+                      disabled={submittingOffer}
+                      className="w-full py-2.5 bg-[#1F3A5F] hover:bg-[#162C49] text-white rounded-md font-semibold text-xs transition-colors flex items-center justify-center gap-1.5 disabled:opacity-50 shadow-xs"
+                    >
+                      <Send className="w-4 h-4" />
+                      <span>
+                        {submittingOffer
+                          ? 'Submitting Offer...'
+                          : `Submit Purchase Offer (Landed: ₹${effectiveBuyerCost.toFixed(2)}/Qtl)`}
+                      </span>
+                    </button>
+                  </form>
+
+                  {/* Right Column: Transport Cost Estimator (5 cols) */}
+                  <div className="lg:col-span-5 bg-gradient-to-b from-[#F5F8FB] to-[#EEF3F8] border border-[#CCD8E6] rounded-xl p-4 space-y-3.5 shadow-xs">
+                    {/* Estimator Header */}
+                    <div className="flex items-center justify-between border-b border-[#D4DEEB] pb-2.5">
+                      <div className="flex items-center gap-2">
+                        <div className="p-1.5 rounded-lg bg-[#1F3A5F] text-white shadow-xs">
+                          <Truck className="w-4 h-4" />
+                        </div>
+                        <div>
+                          <h4 className="font-bold text-[#1F3A5F] text-xs flex items-center gap-1.5">
+                            <span>{t.estimatorTitle}</span>
+                            <span className="text-[10px] bg-emerald-100 text-emerald-800 font-semibold px-1.5 py-0.2 rounded">
+                              Live
+                            </span>
+                          </h4>
+                          <p className="text-[10px] text-[#5B6675]">{t.estimatorSubtitle}</p>
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Formula Explanation Card */}
+                    <div className="p-2.5 bg-white border border-[#D9DEE5] rounded-lg text-[11px] space-y-1.5 shadow-2xs">
+                      <div className="flex items-center justify-between text-[#5B6675]">
+                        <span className="font-bold text-[#1F3A5F] flex items-center gap-1">
+                          <Calculator className="w-3.5 h-3.5 text-[#1F3A5F]" />
+                          <span>{t.formulaHeader}</span>
+                        </span>
+                        <span className="text-[10px] font-mono font-medium text-[#5B6675] bg-slate-100 px-1.5 py-0.5 rounded">
+                          {listing.quantityQuintals} Qtl Batch
+                        </span>
+                      </div>
+                      <div className="font-mono text-[10px] bg-[#F8FAFC] p-2 rounded border border-[#E2E8F0] text-[#1E293B] space-y-1">
+                        <div className="text-[#64748B] text-[9.5px]">
+                          Buyer Cost = Farmer Rate + (Distance × Cost/km ÷ Quantity)
+                        </div>
+                        <div className="font-semibold text-[#1F3A5F]">
+                          ₹{baseRate} + ({distance} km × ₹{ratePerKm} ÷ {quantity} Qtl)
+                        </div>
+                        <div className="text-emerald-700 font-medium">
+                          = ₹{baseRate} + ₹{transportPerQuintal.toFixed(2)} = <span className="font-bold text-emerald-800">₹{effectiveBuyerCost.toFixed(2)} / Qtl</span>
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Interactive Parameter Controls */}
+                    <div className="space-y-2.5">
+                      {/* Distance Slider / Input */}
+                      <div>
+                        <div className="flex items-center justify-between mb-1">
+                          <label className="text-[11px] font-semibold text-[#1B2430]">
+                            {t.distanceLabel}
+                          </label>
+                          <span className="text-[10px] text-[#5B6675]">
+                            {selectedBuyerId !== 'custom'
+                              ? `${DEMO_BUYERS.find((b) => b.id === selectedBuyerId)?.district} → ${listing.district}`
+                              : t.customDist}
+                          </span>
+                        </div>
+                        <div className="flex items-center gap-2">
+                          <input
+                            type="number"
+                            min={1}
+                            max={500}
+                            value={transportDistanceKm}
+                            onChange={(e) => setTransportDistanceKm(Math.max(1, Number(e.target.value)))}
+                            className="w-20 bg-white border border-[#D9DEE5] rounded-md px-2 py-1 text-xs font-semibold text-[#1B2430] focus:ring-2 focus:ring-[#1F3A5F]"
+                          />
+                          <div className="flex flex-wrap gap-1 flex-1">
+                            {[15, 35, 60, 95].map((km) => (
+                              <button
+                                key={km}
+                                type="button"
+                                onClick={() => setTransportDistanceKm(km)}
+                                className={`px-1.5 py-0.5 rounded text-[10px] font-medium border transition-colors ${
+                                  transportDistanceKm === km
+                                    ? 'bg-[#1F3A5F] text-white border-[#1F3A5F]'
+                                    : 'bg-white text-[#5B6675] border-[#D9DEE5] hover:border-[#1F3A5F]'
+                                }`}
+                              >
+                                {km} km
+                              </button>
+                            ))}
+                          </div>
+                        </div>
+                      </div>
+
+                      {/* Freight Cost Per KM */}
+                      <div>
+                        <div className="flex items-center justify-between mb-1">
+                          <label className="text-[11px] font-semibold text-[#1B2430]">
+                            {t.transportRateLabel}
+                          </label>
+                          <span className="text-[10px] text-[#5B6675]">Vehicle Type</span>
+                        </div>
+                        <div className="flex items-center gap-2">
+                          <input
+                            type="number"
+                            min={5}
+                            max={200}
+                            value={transportCostPerKm}
+                            onChange={(e) => setTransportCostPerKm(Math.max(1, Number(e.target.value)))}
+                            className="w-20 bg-white border border-[#D9DEE5] rounded-md px-2 py-1 text-xs font-semibold text-[#1B2430] focus:ring-2 focus:ring-[#1F3A5F]"
+                          />
+                          <div className="flex flex-wrap gap-1 flex-1">
+                            {[
+                              { label: '🚜 Trolley', rate: 35 },
+                              { label: '🚛 10-Tyre', rate: 45 },
+                              { label: '🚚 Heavy', rate: 55 },
+                            ].map((v) => (
+                              <button
+                                key={v.rate}
+                                type="button"
+                                onClick={() => setTransportCostPerKm(v.rate)}
+                                className={`px-1.5 py-0.5 rounded text-[10px] font-medium border transition-colors ${
+                                  transportCostPerKm === v.rate
+                                    ? 'bg-[#1F3A5F] text-white border-[#1F3A5F]'
+                                    : 'bg-white text-[#5B6675] border-[#D9DEE5] hover:border-[#1F3A5F]'
+                                }`}
+                              >
+                                {v.label} (₹{v.rate})
+                              </button>
+                            ))}
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Effective Buyer Cost Highlight Box */}
+                    <div className="p-3 bg-white border-2 border-[#1F3A5F]/20 rounded-xl space-y-2 shadow-xs">
+                      <div className="flex items-center justify-between">
+                        <span className="text-[11px] font-semibold text-[#5B6675]">{t.effectiveCost}</span>
+                        <span className="text-[10px] text-emerald-800 bg-emerald-50 border border-emerald-200 font-bold px-2 py-0.5 rounded-full">
+                          Landed Rate
+                        </span>
+                      </div>
+
+                      <div className="flex items-baseline gap-2">
+                        <span className="text-2xl font-black text-[#1F3A5F]">
+                          ₹{effectiveBuyerCost.toFixed(2)}
+                        </span>
+                        <span className="text-xs text-[#5B6675] font-semibold">{t.perQuintal}</span>
+                        <span className="text-[11px] text-[#5B6675] ml-auto">
+                          (₹{Math.round(effectiveBuyerCost * 10).toLocaleString()} {t.perTonne})
+                        </span>
+                      </div>
+
+                      {/* Breakdown summary */}
+                      <div className="border-t border-[#E8EEF5] pt-2 space-y-1 text-[11px]">
+                        <div className="flex justify-between text-[#5B6675]">
+                          <span>🌾 {t.farmerBaseRate}:</span>
+                          <span className="font-semibold text-[#1B2430]">₹{baseRate.toFixed(2)} / Qtl</span>
+                        </div>
+                        <div className="flex justify-between text-[#5B6675]">
+                          <span>🚚 {t.freightOverhead}:</span>
+                          <span className="font-semibold text-emerald-700">
+                            + ₹{transportPerQuintal.toFixed(2)} / Qtl
+                          </span>
+                        </div>
+                        <div className="flex justify-between text-[#5B6675] border-t border-dashed border-[#E2E8F0] pt-1.5">
+                          <span>💰 {t.totalOutlay}:</span>
+                          <span className="font-bold text-[#1F3A5F]">
+                            ₹{Math.round(totalDealCost).toLocaleString()}
+                          </span>
+                        </div>
+                        <div className="flex justify-between text-[10px] text-[#64748B] pl-1">
+                          <span>• {t.farmerGets}: ₹{Math.round(farmerPayout).toLocaleString()}</span>
+                          <span>• {t.freightGets}: ₹{Math.round(totalFreight).toLocaleString()}</span>
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Benchmark Policy Verification */}
+                    <div
+                      className={`p-2 rounded-lg text-[10px] flex items-center gap-1.5 ${
+                        effectiveBuyerCost <= 230
+                          ? 'bg-emerald-50 border border-emerald-200 text-emerald-900'
+                          : 'bg-amber-50 border border-amber-200 text-amber-900'
+                      }`}
+                    >
+                      <ShieldCheck className="w-3.5 h-3.5 shrink-0" />
+                      <span>{effectiveBuyerCost <= 230 ? t.withinBenchmark : t.aboveBenchmark}</span>
                     </div>
                   </div>
-                )}
-
-                {/* Buyer Contact Phone - Always Editable */}
-                <div>
-                  <div className="flex items-center justify-between mb-1">
-                    <label className="block text-[11px] font-semibold text-[#1B2430]">
-                      Buyer Mobile Phone (Fast2SMS Alert Recipient) <span className="text-red-500">*</span>
-                    </label>
-                    <span className="text-[10px] text-[#2E7D32] font-medium">Editable for testing</span>
-                  </div>
-                  <input
-                    type="tel"
-                    maxLength={10}
-                    placeholder="10-digit mobile number (e.g. 9876543210)"
-                    value={buyerContact}
-                    onChange={(e) => setBuyerContact(e.target.value.replace(/\D/g, '').slice(0, 10))}
-                    className="w-full bg-white border border-[#D9DEE5] rounded-md p-2 text-xs text-[#1B2430] focus:ring-2 focus:ring-[#1F3A5F] font-mono"
-                    required
-                  />
-                  <p className="text-[10px] text-[#5B6675] mt-1">
-                    📱 You will receive instant Fast2SMS updates on this number when the farmer accepts or declines this offer.
-                  </p>
                 </div>
-
-                <div className="grid grid-cols-2 gap-3">
-                  <div>
-                    <label className="block text-[11px] font-semibold text-[#5B6675] mb-1">
-                      Offer Rate (₹ / Quintal)
-                    </label>
-                    <input
-                      type="number"
-                      min={50}
-                      max={1000}
-                      value={offerRate}
-                      onChange={(e) => setOfferRate(Number(e.target.value))}
-                      className="w-full bg-white border border-[#D9DEE5] rounded-md p-2 text-xs text-[#1B2430] focus:ring-2 focus:ring-[#1F3A5F]"
-                      required
-                    />
-                  </div>
-                  <div>
-                    <label className="block text-[11px] font-semibold text-[#5B6675] mb-1">
-                      Proposed Pickup Date
-                    </label>
-                    <input
-                      type="date"
-                      value={pickupDate}
-                      onChange={(e) => setPickupDate(e.target.value)}
-                      className="w-full bg-white border border-[#D9DEE5] rounded-md p-2 text-xs text-[#1B2430] focus:ring-2 focus:ring-[#1F3A5F]"
-                      required
-                    />
-                  </div>
-                </div>
-
-                <div>
-                  <label className="block text-[11px] font-semibold text-[#5B6675] mb-1">
-                    Note for Farmer (e.g. baler loading requirements)
-                  </label>
-                  <textarea
-                    rows={2}
-                    value={buyerNote}
-                    onChange={(e) => setBuyerNote(e.target.value)}
-                    placeholder="We provide transport and baler loading within 48 hours..."
-                    className="w-full bg-white border border-[#D9DEE5] rounded-md p-2 text-xs text-[#1B2430] focus:ring-2 focus:ring-[#1F3A5F]"
-                  />
-                </div>
-
-                <div className="p-2.5 bg-amber-50 border border-amber-200 rounded text-[11px] text-amber-900 flex items-center gap-2">
-                  <ShieldCheck className="w-4 h-4 text-amber-700 shrink-0" />
-                  <span>Farmer contact is private and unlocked only after the farmer accepts.</span>
-                </div>
-
-                <button
-                  type="submit"
-                  disabled={submittingOffer}
-                  className="w-full py-2.5 bg-[#1F3A5F] hover:bg-[#162C49] text-white rounded-md font-semibold text-xs transition-colors flex items-center justify-center gap-1.5 disabled:opacity-50"
-                >
-                  <Send className="w-4 h-4" />
-                  <span>{submittingOffer ? 'Submitting Offer...' : 'Submit Purchase Offer'}</span>
-                </button>
-              </form>
-            )}
-          </div>
-        )}
+              )}
+            </div>
+          );
+        })()}
       </div>
 
       {/* Report Listing Modal Popup */}
