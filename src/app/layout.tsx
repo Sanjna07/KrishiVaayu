@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import "./globals.css";
 import { LanguageProvider } from "@/context/LanguageContext";
+import { LocationProvider } from "@/context/LocationContext";
 
 export const metadata: Metadata = {
   title: "KrishiVayu (कृषिवायु) — Burn Alert to Clean Buyer Match",
@@ -21,7 +22,9 @@ export default function RootLayout({
       </head>
       <body className="min-h-full flex flex-col bg-[#F5F7FA] text-[#1B2430]">
         <LanguageProvider>
-          {children}
+          <LocationProvider>
+            {children}
+          </LocationProvider>
         </LanguageProvider>
       </body>
     </html>

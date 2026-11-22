@@ -1,6 +1,6 @@
 'use client';
 
-import { Suspense, useState } from 'react';
+import { Suspense, useState, useEffect } from 'react';
 import { useSearchParams, useRouter } from 'next/navigation';
 import Link from 'next/link';
 import {
@@ -30,6 +30,8 @@ import {
   Mic,
 } from 'lucide-react';
 import { VoiceFillModal } from '@/components/VoiceFillModal';
+import { useLocation } from '@/context/LocationContext';
+import { GpsButton } from '@/components/GpsButton';
 
 function SellFlowForm() {
   const router = useRouter();
@@ -37,6 +39,7 @@ function SellFlowForm() {
 
   // Language state (synced with global site-wide language)
   const { lang, setLang } = useLanguage();
+  const { userLocation } = useLocation();
   const t = marketDict[lang];
 
   // Pre-filled URL query parameters (from WhatsApp farmer alert deep link)
@@ -58,6 +61,17 @@ function SellFlowForm() {
   const [isGpsLoading, setIsGpsLoading] = useState(false);
   const [gpsSuccess, setGpsSuccess] = useState<string | null>(null);
   const [gpsError, setGpsError] = useState<string | null>(null);
+
+  // Auto-fill form from GPS whenever detected or refreshed
+  useEffect(() => {
+    if (userLocation) {
+      if (userLocation.district) setDistrict(userLocation.district);
+      if (userLocation.tehsil) setTehsil(userLocation.tehsil);
+      if (userLocation.village) setVillage(userLocation.village);
+      if (userLocation.state) setState(userLocation.state);
+      if (userLocation.coordinates) setCoordinates(userLocation.coordinates);
+    }
+  }, [userLocation]);
 
   const [quantity, setQuantity] = useState<number | string>(200);
   const [form, setForm] = useState<StrawForm>('baled');
@@ -336,7 +350,10 @@ function SellFlowForm() {
             </div>
           </Link>
 
-          <div className="flex items-center gap-3">
+          <div className="flex items-center gap-2 sm:gap-3">
+            {/* GPS Auto-Detect Button */}
+            <GpsButton />
+
             {/* Language Switcher */}
             <div className="flex items-center bg-[#F5F7FA] rounded-md p-0.5 border border-[#D9DEE5] text-xs">
               <button
@@ -389,53 +406,36 @@ function SellFlowForm() {
           <span className="text-[#1F3A5F] font-semibold">List Paddy Stubble for Sale</span>
         </div>
 
-        <div className="border-b border-[#D9DEE5] pb-3">
+        <div className="border-b border-[#D9DEE5] pb-3 flex items-start justify-between gap-3">
           <h1 className="text-xl sm:text-2xl font-bold text-[#1F3A5F]">
             🌾 {lang === 'pa' ? 'ਪਰਾਲੀ ਵੇਚਣ ਲਈ ਦਰਜ ਕਰੋ' : lang === 'hi' ? 'पराली बिक्री हेतु लिस्ट करें' : 'List Paddy Stubble for Sale'}
           </h1>
+
+          {step !== 'success' && (
+            <div className="flex flex-col items-end shrink-0">
+              <button
+                type="button"
+                onClick={() => setIsVoiceModalOpen(true)}
+                className="px-3.5 py-1.5 bg-[#2E7D32] hover:bg-[#236327] active:scale-95 text-white text-xs font-bold rounded-lg flex items-center gap-1.5 shadow-sm transition-all cursor-pointer"
+                title="Fill with voice in your own language"
+              >
+                <Mic className="w-3.5 h-3.5" />
+                <span>{lang === 'pa' ? 'ਬੋਲ ਕੇ ਭਰੋ' : lang === 'hi' ? 'बोलकर भरें' : 'Voice Fill'}</span>
+              </button>
+              <span className="text-[10px] text-[#5B6675] mt-0.5 text-right font-medium">
+                {lang === 'pa'
+                  ? 'ਆਪਣੀ ਭਾਸ਼ਾ ਵਿੱਚ ਬੋਲ ਕੇ ਭਰੋ'
+                  : lang === 'hi'
+                  ? 'अपनी भाषा में बोलकर भरें'
+                  : 'fill with voice in your own language'}
+              </span>
+            </div>
+          )}
         </div>
       </div>
 
       {/* Main Container: Centered Layout */}
       <main className="max-w-2xl w-full mx-auto px-4 py-6 flex-1">
-        {/* Sarvam AI Voice Assistant Banner (Featured Rural Access Option) */}
-        {step !== 'success' && (
-          <div className="mb-4 bg-gradient-to-r from-emerald-900 to-[#1F3A5F] text-white rounded-xl p-3.5 sm:p-4 shadow-sm border border-emerald-600/30 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-            <div className="flex items-start gap-3">
-              <div className="w-10 h-10 rounded-xl bg-emerald-500/20 border border-emerald-400/40 flex items-center justify-center text-emerald-300 shrink-0">
-                <Mic className="w-5 h-5 animate-pulse" />
-              </div>
-              <div className="min-w-0">
-                <div className="flex items-center gap-2">
-                  <h3 className="font-bold text-xs sm:text-sm text-white">
-                    {lang === 'pa' ? '🎙️ ਬੋਲ ਕੇ ਫਾਰਮ ਭਰੋ (Sarvam AI)' : lang === 'hi' ? '🎙️ बोलकर भरें (Sarvam AI Voice)' : '🎙️ Voice-Fill Form (Sarvam AI)'}
-                  </h3>
-                  <span className="text-[10px] bg-emerald-500/30 text-emerald-200 border border-emerald-400/30 px-2 py-0.5 rounded-full font-medium">
-                    Hindi &amp; Punjabi
-                  </span>
-                </div>
-                <p className="text-[11px] text-slate-200 mt-0.5 leading-snug">
-                  {lang === 'pa'
-                    ? '10-12 ਸਕਿੰਟਾਂ ਦੀ ਆਡੀਓ ਹਿਦਾਇਤ ਸੁਣੋ ਅਤੇ ਬੋਲ ਕੇ ਪੂਰਾ ਫਾਰਮ ਭਰੋ।'
-                    : lang === 'hi'
-                    ? '10-12 सेकंड का ऑडियो निर्देश सुनें और बोलकर 30 सेकंड में फॉर्म भरें।'
-                    : 'Listen to 10-12s audio instructions, then speak to fill your listing automatically.'}
-                </p>
-              </div>
-            </div>
-            <button
-              type="button"
-              onClick={() => setIsVoiceModalOpen(true)}
-              className="px-4 py-2 bg-emerald-500 hover:bg-emerald-600 active:scale-98 text-white text-xs font-bold rounded-lg flex items-center justify-center gap-2 shadow-md transition-all shrink-0 cursor-pointer"
-            >
-              <Mic className="w-3.5 h-3.5" />
-              <span>
-                {lang === 'pa' ? 'ਆਵਾਜ਼ ਨਾਲ ਭਰੋ' : lang === 'hi' ? 'आवाज़ से भरें' : 'Start Voice Fill'}
-              </span>
-            </button>
-          </div>
-        )}
-
         {/* AI Voice Details Applied Confirmation Banner */}
         {voiceNotice && step !== 'success' && (
           <div className="mb-4 bg-emerald-50 border border-emerald-300 rounded-xl p-3.5 text-xs text-emerald-900 flex items-start justify-between gap-2 shadow-2xs">
@@ -526,72 +526,54 @@ function SellFlowForm() {
               {/* STEP 1: WHERE */}
               {step === 1 && (
                 <div className="bg-white border border-[#D9DEE5] rounded-xl p-5 sm:p-6 shadow-xs">
-                  <div className="flex items-center gap-3 mb-4 pb-3 border-b border-[#D9DEE5]">
-                    <div className="w-10 h-10 rounded-lg bg-emerald-50 border border-emerald-200 flex items-center justify-center text-[#2E7D32]">
-                      <MapPin className="w-5 h-5" />
+                  <div className="flex items-start justify-between gap-3 mb-4 pb-3 border-b border-[#D9DEE5]">
+                    <div className="flex items-center gap-3">
+                      <div className="w-10 h-10 rounded-lg bg-emerald-50 border border-emerald-200 flex items-center justify-center text-[#2E7D32]">
+                        <MapPin className="w-5 h-5" />
+                      </div>
+                      <div>
+                        <h2 className="text-base sm:text-lg font-bold text-[#1F3A5F]">{t.step1Title}</h2>
+                        <p className="text-xs text-[#5B6675]">{t.step1Desc}</p>
+                      </div>
                     </div>
-                    <div>
-                      <h2 className="text-base sm:text-lg font-bold text-[#1F3A5F]">{t.step1Title}</h2>
-                      <p className="text-xs text-[#5B6675]">{t.step1Desc}</p>
+
+                    {/* Top right corner voice button */}
+                    <div className="flex flex-col items-end shrink-0">
+                      <button
+                        type="button"
+                        onClick={() => setIsVoiceModalOpen(true)}
+                        className="px-3.5 py-1.5 bg-[#2E7D32] hover:bg-[#236327] active:scale-95 text-white text-xs font-bold rounded-lg flex items-center gap-1.5 shadow-sm transition-all cursor-pointer"
+                        title="Fill with voice in your own language"
+                      >
+                        <Mic className="w-3.5 h-3.5" />
+                        <span>{lang === 'pa' ? 'ਬੋਲ ਕੇ ਭਰੋ' : lang === 'hi' ? 'बोलकर भरें' : 'Voice Fill'}</span>
+                      </button>
+                      <span className="text-[10px] text-[#5B6675] mt-0.5 text-right font-medium">
+                        {lang === 'pa'
+                          ? 'ਆਪਣੀ ਭਾਸ਼ਾ ਵਿੱਚ ਬੋਲ ਕੇ ਭਰੋ'
+                          : lang === 'hi'
+                          ? 'अपनी भाषा में बोलकर भरें'
+                          : 'fill with voice in your own language'}
+                      </span>
                     </div>
                   </div>
 
                   <div className="space-y-4">
-                    {/* GPS Auto-Detect Card & Manual Selection Option */}
-                    <div className="p-3.5 bg-gradient-to-r from-emerald-50/80 to-blue-50/50 border border-emerald-200/80 rounded-lg">
-                      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-                        <div className="min-w-0">
-                          <p className="text-xs font-semibold text-[#1F3A5F] flex items-center gap-1.5">
-                            <Navigation className="w-3.5 h-3.5 text-[#2E7D32]" />
-                            <span>{t.gpsDetectBtn}</span>
-                          </p>
-                          <p className="text-[11px] text-[#5B6675] mt-0.5">
-                            {t.manualOrGpsNote}
-                          </p>
+                    {/* Auto-filled Location Indicator if GPS is active */}
+                    {userLocation && (
+                      <div className="p-2.5 bg-emerald-50 border border-emerald-200 rounded-lg flex items-center justify-between gap-2 text-xs text-emerald-900 shadow-2xs">
+                        <div className="flex items-center gap-2 min-w-0">
+                          <Navigation className="w-3.5 h-3.5 text-[#2E7D32] fill-emerald-600 shrink-0" />
+                          <span className="font-medium truncate">
+                            📍 {lang === 'pa' ? 'ਜੀ.ਪੀ.ਐਸ ਨਾਲ ਸਥਾਨ ਭਰਿਆ ਗਿਆ:' : lang === 'hi' ? 'जीपीएस द्वारा स्थान भर दिया गया:' : 'Auto-filled via GPS:'}{' '}
+                            <span className="font-bold">{[userLocation.village, userLocation.tehsil, userLocation.district].filter(Boolean).join(', ')}</span>
+                          </span>
                         </div>
-                        <button
-                          type="button"
-                          onClick={handleAutoDetectGPS}
-                          disabled={isGpsLoading}
-                          className="min-h-[38px] px-4 py-2 bg-[#1F3A5F] hover:bg-[#162C49] disabled:bg-[#8892A0] text-white text-xs font-semibold rounded-md flex items-center justify-center gap-2 transition-colors shadow-xs shrink-0 cursor-pointer"
-                        >
-                          {isGpsLoading ? (
-                            <>
-                              <Loader2 className="w-3.5 h-3.5 animate-spin" />
-                              <span>{t.gpsDetecting}</span>
-                            </>
-                          ) : (
-                            <>
-                              <Navigation className="w-3.5 h-3.5 text-emerald-300" />
-                              <span>{t.gpsDetectBtn}</span>
-                            </>
-                          )}
-                        </button>
+                        <span className="text-[10px] text-emerald-700 bg-emerald-100/60 px-2 py-0.5 rounded font-semibold shrink-0">
+                          {lang === 'pa' ? 'ਸੋਧਣ ਯੋਗ' : lang === 'hi' ? 'बदलाव संभव' : 'Editable below'}
+                        </span>
                       </div>
-
-                      {/* GPS Success Feedback */}
-                      {gpsSuccess && (
-                        <div className="mt-2.5 pt-2 border-t border-emerald-200 flex items-start gap-2 text-xs text-emerald-800">
-                          <CheckCircle2 className="w-4 h-4 text-[#2E7D32] shrink-0 mt-0.5" />
-                          <div className="min-w-0">
-                            <p className="font-semibold text-emerald-900">
-                              📍 {gpsSuccess}
-                            </p>
-                            <p className="text-[11px] text-emerald-700">
-                              {t.gpsSuccessNotice}
-                            </p>
-                          </div>
-                        </div>
-                      )}
-
-                      {/* GPS Error Feedback */}
-                      {gpsError && (
-                        <div className="mt-2.5 pt-2 border-t border-amber-200 flex items-start gap-2 text-xs text-amber-800">
-                          <AlertCircle className="w-4 h-4 text-amber-600 shrink-0 mt-0.5" />
-                          <span className="text-[11px] font-medium">{gpsError}</span>
-                        </div>
-                      )}
-                    </div>
+                    )}
 
                     {/* Manual / Auto-populated Form Fields */}
                     <div>
@@ -660,13 +642,35 @@ function SellFlowForm() {
               {/* STEP 2: HOW MUCH */}
               {step === 2 && (
                 <div className="bg-white border border-[#D9DEE5] rounded-xl p-5 sm:p-6 shadow-xs">
-                  <div className="flex items-center gap-3 mb-4 pb-3 border-b border-[#D9DEE5]">
-                    <div className="w-10 h-10 rounded-lg bg-emerald-50 border border-emerald-200 flex items-center justify-center text-[#2E7D32]">
-                      <Scale className="w-5 h-5" />
+                  <div className="flex items-start justify-between gap-3 mb-4 pb-3 border-b border-[#D9DEE5]">
+                    <div className="flex items-center gap-3">
+                      <div className="w-10 h-10 rounded-lg bg-emerald-50 border border-emerald-200 flex items-center justify-center text-[#2E7D32]">
+                        <Scale className="w-5 h-5" />
+                      </div>
+                      <div>
+                        <h2 className="text-base sm:text-lg font-bold text-[#1F3A5F]">{t.step2Title}</h2>
+                        <p className="text-xs text-[#5B6675]">{t.step2Desc}</p>
+                      </div>
                     </div>
-                    <div>
-                      <h2 className="text-base sm:text-lg font-bold text-[#1F3A5F]">{t.step2Title}</h2>
-                      <p className="text-xs text-[#5B6675]">{t.step2Desc}</p>
+
+                    {/* Top right corner voice button */}
+                    <div className="flex flex-col items-end shrink-0">
+                      <button
+                        type="button"
+                        onClick={() => setIsVoiceModalOpen(true)}
+                        className="px-3.5 py-1.5 bg-[#2E7D32] hover:bg-[#236327] active:scale-95 text-white text-xs font-bold rounded-lg flex items-center gap-1.5 shadow-sm transition-all cursor-pointer"
+                        title="Fill with voice in your own language"
+                      >
+                        <Mic className="w-3.5 h-3.5" />
+                        <span>{lang === 'pa' ? 'ਬੋਲ ਕੇ ਭਰੋ' : lang === 'hi' ? 'बोलकर भरें' : 'Voice Fill'}</span>
+                      </button>
+                      <span className="text-[10px] text-[#5B6675] mt-0.5 text-right font-medium">
+                        {lang === 'pa'
+                          ? 'ਆਪਣੀ ਭਾਸ਼ਾ ਵਿੱਚ ਬੋਲ ਕੇ ਭਰੋ'
+                          : lang === 'hi'
+                          ? 'अपनी भाषा में बोलकर भरें'
+                          : 'fill with voice in your own language'}
+                      </span>
                     </div>
                   </div>
 
@@ -770,13 +774,35 @@ function SellFlowForm() {
                   onSubmit={handleSubmit}
                   className="bg-white border border-[#D9DEE5] rounded-xl p-5 sm:p-6 shadow-xs"
                 >
-                  <div className="flex items-center gap-3 mb-4 pb-3 border-b border-[#D9DEE5]">
-                    <div className="w-10 h-10 rounded-lg bg-emerald-50 border border-emerald-200 flex items-center justify-center text-[#2E7D32]">
-                      <Calendar className="w-5 h-5" />
+                  <div className="flex items-start justify-between gap-3 mb-4 pb-3 border-b border-[#D9DEE5]">
+                    <div className="flex items-center gap-3">
+                      <div className="w-10 h-10 rounded-lg bg-emerald-50 border border-emerald-200 flex items-center justify-center text-[#2E7D32]">
+                        <Calendar className="w-5 h-5" />
+                      </div>
+                      <div>
+                        <h2 className="text-base sm:text-lg font-bold text-[#1F3A5F]">{t.step3Title}</h2>
+                        <p className="text-xs text-[#5B6675]">{t.step3Desc}</p>
+                      </div>
                     </div>
-                    <div>
-                      <h2 className="text-base sm:text-lg font-bold text-[#1F3A5F]">{t.step3Title}</h2>
-                      <p className="text-xs text-[#5B6675]">{t.step3Desc}</p>
+
+                    {/* Top right corner voice button */}
+                    <div className="flex flex-col items-end shrink-0">
+                      <button
+                        type="button"
+                        onClick={() => setIsVoiceModalOpen(true)}
+                        className="px-3.5 py-1.5 bg-[#2E7D32] hover:bg-[#236327] active:scale-95 text-white text-xs font-bold rounded-lg flex items-center gap-1.5 shadow-sm transition-all cursor-pointer"
+                        title="Fill with voice in your own language"
+                      >
+                        <Mic className="w-3.5 h-3.5" />
+                        <span>{lang === 'pa' ? 'ਬੋਲ ਕੇ ਭਰੋ' : lang === 'hi' ? 'बोलकर भरें' : 'Voice Fill'}</span>
+                      </button>
+                      <span className="text-[10px] text-[#5B6675] mt-0.5 text-right font-medium">
+                        {lang === 'pa'
+                          ? 'ਆਪਣੀ ਭਾਸ਼ਾ ਵਿੱਚ ਬੋਲ ਕੇ ਭਰੋ'
+                          : lang === 'hi'
+                          ? 'अपनी भाषा में बोलकर भरें'
+                          : 'fill with voice in your own language'}
+                      </span>
                     </div>
                   </div>
 

@@ -7,39 +7,38 @@ import { MarketMap } from '@/components/MarketMap';
 import { ListingModal } from '@/components/ListingModal';
 import { PUNJAB_DISTRICTS } from '@/lib/marketDict';
 import { useLanguage } from '@/context/LanguageContext';
+import { useLocation } from '@/context/LocationContext';
 import type { PublicListing } from '@/lib/marketSanitizer';
 import {
   Filter,
   PlusCircle,
   ExternalLink,
+  Navigation,
 } from 'lucide-react';
-
-interface NearestBuyer {
-  id: string;
-  name: string;
-  type: string;
-  district: string;
-  approxDistanceKm: number;
-  isOperational: boolean;
-  priceQuote?: string;
-  notes?: string;
-}
 
 export default function MarketBrowsePage() {
   const { t } = useLanguage();
+  const { userLocation } = useLocation();
   const [listings, setListings] = useState<PublicListing[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
-  // Filters
+  // Filters (auto-defaults to user's detected GPS district if available)
   const [filterDistrict, setFilterDistrict] = useState<string>('All');
   const [filterForm, setFilterForm] = useState<string>('All');
   const [filterStatus, setFilterStatus] = useState<string>('All');
+  const [hasUserManuallyFiltered, setHasUserManuallyFiltered] = useState(false);
+
+  // When GPS location is detected or changes, auto-select their district
+  useEffect(() => {
+    if (userLocation?.district && !hasUserManuallyFiltered) {
+      setFilterDistrict(userLocation.district);
+    }
+  }, [userLocation, hasUserManuallyFiltered]);
 
   // Selected Listing & Modal State
   const [selectedListing, setSelectedListing] = useState<PublicListing | null>(null);
   const [isModalOpen, setIsModalOpen] = useState(false);
-  const [nearestBuyers, setNearestBuyers] = useState<NearestBuyer[]>([]);
 
   // User Role
   const [userRole, setUserRole] = useState<'public' | 'buyer' | 'farmer'>('public');
@@ -88,17 +87,6 @@ export default function MarketBrowsePage() {
     run();
     return () => { ignore = true; };
   }, [filterDistrict, filterForm, filterStatus]);
-
-  // Fetch nearest buyers when district changes
-  useEffect(() => {
-    const dist = filterDistrict !== 'All' ? filterDistrict : 'Sangrur';
-    fetch(`/api/market/nearest-buyers?district=${encodeURIComponent(dist)}`)
-      .then((r) => r.json())
-      .then((data) => {
-        if (data.buyers) setNearestBuyers(data.buyers.slice(0, 4));
-      })
-      .catch(() => {});
-  }, [filterDistrict]);
 
   const handleOpenModal = (listing: PublicListing) => {
     setSelectedListing(listing);
@@ -150,16 +138,40 @@ export default function MarketBrowsePage() {
 
         {/* Filter Toolbar Card */}
         <div className="bg-white border border-[#D9DEE5] rounded-lg p-3.5 flex flex-wrap items-center justify-between gap-3 shadow-xs">
-          <div className="flex items-center gap-2 text-xs font-bold text-[#1F3A5F] uppercase tracking-wider">
-            <Filter className="w-4 h-4 text-[#1F3A5F]" />
-            <span>{t.market.filterFeed}</span>
+          <div className="flex items-center gap-2.5 flex-wrap">
+            <div className="flex items-center gap-2 text-xs font-bold text-[#1F3A5F] uppercase tracking-wider">
+              <Filter className="w-4 h-4 text-[#1F3A5F]" />
+              <span>{t.market.filterFeed}</span>
+            </div>
+
+            {/* GPS Auto-selected Indicator pill */}
+            {userLocation && filterDistrict === userLocation.district && (
+              <span className="inline-flex items-center gap-1.5 px-2.5 py-1 bg-emerald-50 text-emerald-800 border border-emerald-300 rounded-md text-xs font-semibold shadow-2xs">
+                <Navigation className="w-3 h-3 text-[#2E7D32] fill-emerald-600" />
+                <span>📍 {userLocation.district} ({userLocation.state})</span>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setFilterDistrict('All');
+                    setHasUserManuallyFiltered(true);
+                  }}
+                  className="ml-1 text-emerald-700 hover:text-emerald-950 text-xs font-bold"
+                  title="Show all districts"
+                >
+                  ✕
+                </button>
+              </span>
+            )}
           </div>
 
           <div className="flex flex-wrap items-center gap-2.5 text-xs">
-            {/* District Filter */}
+            {/* District Filter (manual override enabled) */}
             <select
               value={filterDistrict}
-              onChange={(e) => setFilterDistrict(e.target.value)}
+              onChange={(e) => {
+                setFilterDistrict(e.target.value);
+                setHasUserManuallyFiltered(true);
+              }}
               className="bg-white border border-[#D9DEE5] rounded-md px-3 py-1.5 text-xs text-[#1B2430] focus:ring-2 focus:ring-[#1F3A5F]"
             >
               <option value="All">{t.market.allDistricts}</option>
@@ -197,121 +209,105 @@ export default function MarketBrowsePage() {
 
         {/* 2-Column Split: Listings Scrollable Feed (Left) + Synced Map (Right) */}
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-5 items-start">
-          {/* Left Column: Listings Feed (7 cols) */}
-          <div className="lg:col-span-7 space-y-3">
-            {loading && (
-              <div className="text-center py-12 text-[#5B6675] text-xs">Loading marketplace listings...</div>
-            )}
+          {/* Left Column: Listings Feed (7 cols) - Scrollable with height calibrated for ~4 boxes */}
+          <div className="lg:col-span-7">
+            <div className="h-[620px] overflow-y-auto pr-2 space-y-3 rounded-lg scrollbar-thin">
+              {loading && (
+                <div className="text-center py-12 text-[#5B6675] text-xs">Loading marketplace listings...</div>
+              )}
 
-            {error && (
-              <div className="p-3 bg-red-50 border border-red-200 rounded-md text-red-800 text-xs">
-                {error}
-              </div>
-            )}
+              {error && (
+                <div className="p-3 bg-red-50 border border-red-200 rounded-md text-red-800 text-xs">
+                  {error}
+                </div>
+              )}
 
-            {!loading && listings.length === 0 && (
-              <div className="bg-white border border-[#D9DEE5] rounded-lg p-8 text-center text-xs space-y-2">
-                <p className="font-semibold text-[#1B2430]">{t.market.noListings}</p>
-                <p className="text-[#5B6675]">{t.market.resetFilters}</p>
-                <button
-                  onClick={() => { setFilterDistrict('All'); setFilterForm('All'); setFilterStatus('All'); }}
-                  className="mt-2 px-3 py-1.5 bg-[#1F3A5F] text-white rounded text-xs font-semibold"
+              {!loading && listings.length === 0 && (
+                <div className="bg-white border border-[#D9DEE5] rounded-lg p-8 text-center text-xs space-y-2">
+                  <p className="font-semibold text-[#1B2430]">{t.market.noListings}</p>
+                  <p className="text-[#5B6675]">{t.market.resetFilters}</p>
+                  <button
+                    onClick={() => { setFilterDistrict('All'); setFilterForm('All'); setFilterStatus('All'); }}
+                    className="mt-2 px-3 py-1.5 bg-[#1F3A5F] text-white rounded text-xs font-semibold"
+                  >
+                    {t.market.resetFilters}
+                  </button>
+                </div>
+              )}
+
+              {listings.map((l) => (
+                <div
+                  key={l.id}
+                  onClick={() => handleOpenModal(l)}
+                  className="bg-white border border-[#D9DEE5] hover:border-[#1F3A5F] rounded-lg p-4 cursor-pointer transition-all shadow-xs hover:shadow-sm space-y-2.5"
                 >
-                  {t.market.resetFilters}
-                </button>
-              </div>
-            )}
-
-            {listings.map((l) => (
-              <div
-                key={l.id}
-                onClick={() => handleOpenModal(l)}
-                className="bg-white border border-[#D9DEE5] hover:border-[#1F3A5F] rounded-lg p-4 cursor-pointer transition-all shadow-xs hover:shadow-sm space-y-2.5"
-              >
-                <div className="flex items-start justify-between gap-2">
-                  <div>
-                    <div className="flex items-center gap-2">
-                      <h2 className="text-sm font-bold text-[#1B2430]">
-                        {l.village}, <span className="text-[#5B6675] font-normal">{l.district}</span>
-                      </h2>
-                      {l.isDemo && (
-                        <span className="text-[10px] uppercase font-bold bg-amber-50 text-amber-800 border border-amber-200 px-1.5 py-0.2 rounded">
-                          Demo
-                        </span>
-                      )}
+                  <div className="flex items-start justify-between gap-2">
+                    <div>
+                      <div className="flex items-center gap-2">
+                        <h2 className="text-sm font-bold text-[#1B2430]">
+                          {l.village}, <span className="text-[#5B6675] font-normal">{l.district}</span>
+                        </h2>
+                        {l.isDemo && (
+                          <span className="text-[10px] uppercase font-bold bg-amber-50 text-amber-800 border border-amber-200 px-1.5 py-0.2 rounded">
+                            Demo
+                          </span>
+                        )}
+                      </div>
+                      <p className="text-[11px] text-[#5B6675] mt-0.5">
+                        {l.availability.startDate} — {l.availability.endDate}
+                      </p>
                     </div>
-                    <p className="text-[11px] text-[#5B6675] mt-0.5">
-                      {l.availability.startDate} — {l.availability.endDate}
-                    </p>
+                    {getStatusBadge(l.status)}
                   </div>
-                  {getStatusBadge(l.status)}
-                </div>
 
-                <div className="grid grid-cols-3 gap-2 py-2 border-y border-[#E5E9F0] text-xs">
-                  <div>
-                    <span className="text-[#5B6675] block text-[11px]">{t.market.residueAvailable}</span>
-                    <span className="font-bold text-emerald-800 text-sm">{l.quantityQuintals} {t.market.perQtl}</span>
+                  <div className="grid grid-cols-3 gap-2 py-2 border-y border-[#E5E9F0] text-xs">
+                    <div>
+                      <span className="text-[#5B6675] block text-[11px]">{t.market.residueAvailable}</span>
+                      <span className="font-bold text-emerald-800 text-sm">{l.quantityQuintals} {t.market.perQtl}</span>
+                    </div>
+                    <div>
+                      <span className="text-[#5B6675] block text-[11px]">{t.market.residueForm}</span>
+                      <span className="font-semibold text-[#1B2430]">
+                        {l.form === 'baled' ? t.market.formBaled : t.market.formLoose}
+                      </span>
+                    </div>
+                    <div>
+                      <span className="text-[#5B6675] block text-[11px]">{t.market.askingPrice}</span>
+                      <span className="font-semibold text-[#1F3A5F]">
+                        {l.askingPricePerQuintal ? `₹${l.askingPricePerQuintal} / ${t.market.perQtl}` : t.market.openPrice}
+                      </span>
+                    </div>
                   </div>
-                  <div>
-                    <span className="text-[#5B6675] block text-[11px]">{t.market.residueForm}</span>
-                    <span className="font-semibold text-[#1B2430]">
-                      {l.form === 'baled' ? t.market.formBaled : t.market.formLoose}
-                    </span>
-                  </div>
-                  <div>
-                    <span className="text-[#5B6675] block text-[11px]">{t.market.askingPrice}</span>
-                    <span className="font-semibold text-[#1F3A5F]">
-                      {l.askingPricePerQuintal ? `₹${l.askingPricePerQuintal} / ${t.market.perQtl}` : t.market.openPrice}
-                    </span>
-                  </div>
-                </div>
 
-                <div className="flex items-center justify-between pt-0.5 text-[11px]">
-                  <span className="text-[#5B6675]">
-                    {l.offersCount !== undefined ? `${l.offersCount} ${t.market.viewOffers}` : t.market.viewOffers}
-                  </span>
-                  <span className="font-semibold text-[#1F3A5F] flex items-center gap-1">
-                    <span>{t.market.viewDetailsBid}</span>
-                    <ExternalLink className="w-3.5 h-3.5" />
-                  </span>
+                  <div className="flex items-center justify-between pt-0.5">
+                    <span className="text-[#5B6675] text-[11px]">
+                      {l.offersCount !== undefined ? `${l.offersCount} ${t.market.viewOffers}` : t.market.viewOffers}
+                    </span>
+                    <button
+                      type="button"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        handleOpenModal(l);
+                      }}
+                      className="px-4 py-1.5 bg-[#2E7D32] hover:bg-[#236327] active:scale-98 text-white text-xs font-bold rounded-md flex items-center gap-1.5 transition-colors shadow-xs cursor-pointer"
+                    >
+                      <span>Buy</span>
+                      <ExternalLink className="w-3.5 h-3.5" />
+                    </button>
+                  </div>
                 </div>
-              </div>
-            ))}
+              ))}
+            </div>
           </div>
 
-          {/* Right Column: Synced Map & Clean Alternatives (5 cols) */}
-          <div className="lg:col-span-5 space-y-4">
-            <div className="bg-white border border-[#D9DEE5] rounded-lg overflow-hidden shadow-xs h-[380px]">
+          {/* Right Column: Synced Map (5 cols) - Matches Listings Height Exactly */}
+          <div className="lg:col-span-5">
+            <div className="bg-white border border-[#D9DEE5] rounded-lg overflow-hidden shadow-xs h-[620px]">
               <MarketMap
                 listings={listings}
                 selectedListing={selectedListing}
                 onSelectListing={(l) => handleOpenModal(l as PublicListing)}
               />
-            </div>
-
-            {/* Nearby Sourced Clean Off-Takers */}
-            <div className="bg-white border border-[#D9DEE5] rounded-lg p-4 shadow-xs space-y-3">
-              <div className="flex items-center justify-between border-b border-[#E5E9F0] pb-2">
-                <span className="font-bold text-xs text-[#1F3A5F] uppercase tracking-wider">
-                  {t.market.cleanAlternativesSidebar}
-                </span>
-                <span className="text-[11px] text-[#5B6675]">{t.market.stateRegistry}</span>
-              </div>
-
-              <div className="space-y-2">
-                {nearestBuyers.map((b) => (
-                  <div key={b.id} className="p-2.5 bg-[#F5F7FA] border border-[#E5E9F0] rounded-md text-xs space-y-0.5">
-                    <div className="flex items-center justify-between">
-                      <span className="font-bold text-[#1B2430]">{b.name}</span>
-                      <span className="text-[11px] text-[#5B6675]">approx. {b.approxDistanceKm} km</span>
-                    </div>
-                    <p className="text-[11px] text-[#5B6675]">{b.type} · {b.district}</p>
-                    {b.priceQuote && (
-                      <p className="text-emerald-800 font-semibold text-[11px]">{b.priceQuote}</p>
-                    )}
-                  </div>
-                ))}
-              </div>
             </div>
           </div>
         </div>

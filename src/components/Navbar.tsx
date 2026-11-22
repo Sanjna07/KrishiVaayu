@@ -3,6 +3,7 @@
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { useLanguage } from '@/context/LanguageContext';
+import { GpsButton } from '@/components/GpsButton';
 
 export function Navbar() {
   const path = usePathname();
@@ -64,8 +65,10 @@ export function Navbar() {
             })}
           </nav>
 
-          {/* Site-wide Language Switcher */}
-          <div className="flex items-center gap-3">
+          {/* GPS Quick Location & Site-wide Language Switcher */}
+          <div className="flex items-center gap-2 sm:gap-3">
+            <GpsButton />
+
             <div className="flex items-center bg-[#F5F7FA] border border-[#D9DEE5] rounded-md p-0.5 text-xs font-medium" role="group" aria-label="Language selection">
               <button
                 type="button"
